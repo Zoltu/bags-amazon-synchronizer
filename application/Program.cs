@@ -15,12 +15,13 @@ namespace Zoltu.BagsAmazonSynchronizer
 			var configuration = new Configuration();
 			using (var db = new Models.BagsContext(configuration))
 			{
+				// this hooks up console logging to the DbContext so we can see the queries being executed in the console output
 				var serviceProvider = db.GetInfrastructure<IServiceProvider>();
 				var loggerFactory = serviceProvider.GetService<ILoggerFactory>();
 				loggerFactory.AddConsole(LogLevel.Information);
 
-				Console.WriteLine(db.Products.First().Name);
 				// TODO
+				Console.WriteLine(db.Products.First().Name);
 			}
 
 			Console.WriteLine("Ending.");
