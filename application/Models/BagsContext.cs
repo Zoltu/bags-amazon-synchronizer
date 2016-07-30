@@ -10,17 +10,16 @@ namespace Zoltu.BagsAmazonSynchronizer.Models
 		public DbSet<TagCategory> TagCategories { get; set; }
 		public DbSet<ProductTag> ProductTags { get; set; }
 
-		[NotMapped]
-		public Configuration Configuration;
+		private Configuration _configuration;
 
 		public BagsContext(Configuration configuration)
 		{
-			Configuration = configuration;
+			_configuration = configuration;
 		}
 
 		protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
 		{
-			optionsBuilder.UseSqlServer(Configuration.SqlServerConnectionString);
+			optionsBuilder.UseSqlServer(_configuration.SqlServerConnectionString);
 		}
 	}
 }
