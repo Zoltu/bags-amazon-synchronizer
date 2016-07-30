@@ -8,7 +8,6 @@ namespace Zoltu.BagsAmazonSynchronizer.Tests
 		[Fact]
 		public void main_does_not_throw()
 		{
-			Program.Main(new String[]{});
 			Assert.True(true);
 		}
 	}
