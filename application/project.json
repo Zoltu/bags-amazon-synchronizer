@@ -1,23 +1,24 @@
 {
-  "version": "1.0.0-*",
-  "buildOptions": {
-    "debugType": "portable",
-    "emitEntryPoint": true
-  },
-  "dependencies": {},
-  "frameworks": {
-    "netcoreapp1.0": {
-      "dependencies": {
-        "Microsoft.NETCore.App": {
-          "type": "platform",
-          "version": "1.0.0"
-        },
-        "Microsoft.Extensions.Configuration": "1.0.0",
-        "Microsoft.Extensions.Configuration.EnvironmentVariables": "1.0.0",
-        "Microsoft.Extensions.Configuration.UserSecrets": "1.0.0",
-        "Microsoft.Extensions.DependencyInjection": "1.0.0"
-      },
-      "imports": "dnxcore50"
-    }
-  }
+    "version": "1.0.0-*",
+    "buildOptions": {
+        "debugType": "portable",
+        "emitEntryPoint": true
+    },
+    "dependencies": {},
+    "frameworks": {
+        "netcoreapp1.0": {
+            "dependencies": {
+                "Microsoft.NETCore.App": {
+                    "type": "platform",
+                    "version": "1.0.0"
+                },
+                "Microsoft.Extensions.Configuration": "1.0.0",
+                "Microsoft.Extensions.Configuration.EnvironmentVariables": "1.0.0",
+                "Microsoft.Extensions.Configuration.UserSecrets": "1.0.0",
+                "Microsoft.Extensions.DependencyInjection": "1.0.0"
+            },
+            "imports": "dnxcore50"
+        }
+    },
+    "userSecretsId": "bags-amazon-synchronization"
 }
