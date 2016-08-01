@@ -69,8 +69,8 @@ namespace application.Synchronization
             _logger.WriteEntry("Synchronization System Started ...", LoggingLevel.Info);
 
             CheckConfigAndSetDefaults();
-            ExecuteUpdate(null);
             _timer = new Timer(ExecuteUpdate, null, (int)Math.Ceiling(_interval.TotalMilliseconds), Timeout.Infinite);
+            ExecuteUpdate(null);
         }
 
         public void Stop()
@@ -108,7 +108,7 @@ namespace application.Synchronization
                 
             //get all the products at once ==> if product count is high it could take time
             //get products by last updated
-            var products = _dbContext.Products.ToList();//to do try/catch
+            var products = _dbContext.Products.Take(10).ToList();//to do try/catch
             for (int i = 0; i < products.Count; i++)
             {
                 var dbProd = products[i];
@@ -126,7 +126,7 @@ namespace application.Synchronization
                     //_watch.Stop();
                     //_watch.ElapsedMilliseconds*1000;
 
-                    _logger.WriteEntry($"Current Price : {dbProd.Price} |==> Amazon State : Price : {amzProd.Price} / Qty : {amzProd.Qty}", LoggingLevel.Debug);
+                    _logger.WriteEntry($"@{dbProd.Asin} | Current Price : {dbProd.Price} |==> Amazon State : Price : {amzProd.Price} / Qty : {amzProd.Qty}", LoggingLevel.Debug);
 
                     if (amzProd.IsUpdateRequired(dbProd))
                     {
@@ -137,7 +137,7 @@ namespace application.Synchronization
                 }
                 catch (Exception ex)
                 {
-                    _logger.WriteEntry($"Error @{dbProd.Asin} : {ex.Message}", LoggingLevel.Error);
+                    _logger.WriteEntry($"@{dbProd.Asin} : {ex.Message}", LoggingLevel.Error);
                 }
             }
 
