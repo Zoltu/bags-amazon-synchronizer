@@ -119,6 +119,7 @@ namespace application.Synchronization
             //get all the products at once ==> if product count is high it could take time
             //get products by last updated
             var products = FetchProductsFromDb();
+            if (products == null) return;
             for (int i = 0; i < products.Count; i++)
             {
                 var dbProd = products[i];
@@ -163,10 +164,11 @@ namespace application.Synchronization
         {
             try
             {
-                return _dbContext.Products.Take(10).ToList();
+                return _dbContext.Products.ToList();//.Take(10)
             }
             catch (Exception ex)
             {
+                _logger.WriteEntry($"Error getting products from DB : {ex.Message}", LoggingLevel.Error);
                 return null;
             }
         }
