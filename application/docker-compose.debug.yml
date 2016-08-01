@@ -1,0 +1,12 @@
+version: '2'
+
+services:
+  application:
+    image: username/application:Debug
+    build:
+      context: .
+      dockerfile: Dockerfile.debug
+    environment:
+      - REMOTE_DEBUGGING=${REMOTE_DEBUGGING}
+    volumes:
+      - .:/app

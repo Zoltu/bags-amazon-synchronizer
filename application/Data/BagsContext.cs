@@ -1,6 +1,7 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿using application.Models;
+using Microsoft.EntityFrameworkCore;
 
-namespace Zoltu.BagsAmazonSynchronizer.Models
+namespace application.Data
 {
 	public class BagsContext : DbContext
     {

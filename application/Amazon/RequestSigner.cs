@@ -22,11 +22,11 @@
 
 using System;
 using System.Collections.Generic;
-using System.Text;
-using System.Security.Cryptography;
 using System.Net;
+using System.Security.Cryptography;
+using System.Text;
 
-namespace Zoltu.BagsAmazonSynchronizer.Amazon
+namespace application.Amazon
 {
 	public class RequestSigner
 	{

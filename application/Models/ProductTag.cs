@@ -1,7 +1,7 @@
 ﻿using System;
 using System.ComponentModel.DataAnnotations;
 
-namespace Zoltu.BagsAmazonSynchronizer.Models
+namespace application.Models
 {
 	public class ProductTag
 	{
