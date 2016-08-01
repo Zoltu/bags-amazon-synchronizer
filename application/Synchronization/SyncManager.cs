@@ -36,6 +36,7 @@ namespace application.Synchronization
         private bool _disposed;
         private Stopwatch _watch;
         private ISyncLogger _logger;
+        private Predicate<object> _stopWhen;
         public bool IsRunning { get { return !_isIdle;} }
         #endregion
 
@@ -52,16 +53,16 @@ namespace application.Synchronization
             _logger.WriteEntry("Synchronization System Initialized ...", LoggingLevel.Info);
         }
         
-        public SyncManager(BagsContext dbContext, AmazonWebClient amazonClient)
-        {
-            _dbContext = dbContext;
-            _amazonClient = amazonClient;
-        }
-        public SyncManager(BagsContext dbContext, AmazonWebClient amazonClient, CancellationTokenSource cancellationToken)
-            : this(dbContext, amazonClient)
-        {
-            _cancellationToken = cancellationToken;
-        } 
+        //public SyncManager(BagsContext dbContext, AmazonWebClient amazonClient)
+        //{
+        //    _dbContext = dbContext;
+        //    _amazonClient = amazonClient;
+        //}
+        //public SyncManager(BagsContext dbContext, AmazonWebClient amazonClient, CancellationTokenSource cancellationToken)
+        //    : this(dbContext, amazonClient)
+        //{
+        //    _cancellationToken = cancellationToken;
+        //} 
         #endregion
 
         public void Start()
@@ -71,13 +72,17 @@ namespace application.Synchronization
             CheckConfigAndSetDefaults();
             _timer = new Timer(ExecuteUpdate, null, (int)Math.Ceiling(_interval.TotalMilliseconds), Timeout.Infinite);
             ExecuteUpdate(null);
+
+            while (!_stopWhen.Invoke(null))
+            {
+                Thread.Sleep(1000);
+            }
         }
 
         public void Stop()
         {
             _timer.Dispose();
             _isIdle = true;
-
             _logger.WriteEntry("Synchronization System Stopped ...", LoggingLevel.Info);
         }
 
@@ -92,6 +97,11 @@ namespace application.Synchronization
             return this;
         }
 
+        public SyncManager StopWhen(Predicate<object> condition)
+        {
+            _stopWhen = condition;
+            return this;
+        }
         public SyncManager SetProgressReportingTo(bool reportProgress)
         {
             _reportProgress = reportProgress;
@@ -108,7 +118,7 @@ namespace application.Synchronization
                 
             //get all the products at once ==> if product count is high it could take time
             //get products by last updated
-            var products = _dbContext.Products.ToList();//to do try/catch
+            var products = FetchProductsFromDb();
             for (int i = 0; i < products.Count; i++)
             {
                 var dbProd = products[i];
@@ -147,6 +157,18 @@ namespace application.Synchronization
             _timer.Change((int)Math.Ceiling(_interval.TotalMilliseconds), Timeout.Infinite);
             _isIdle = true;
             
+        }
+
+        private List<Product> FetchProductsFromDb()
+        {
+            try
+            {
+                return _dbContext.Products.Take(10).ToList();
+            }
+            catch (Exception ex)
+            {
+                return null;
+            }
         }
 
 

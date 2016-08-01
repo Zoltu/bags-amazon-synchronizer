@@ -14,16 +14,19 @@ namespace application
 	{
 		public static void Main(string[] args)
 		{
-			Console.WriteLine("Starting.");
-
+            string input = "";
             using (var sync = new SyncManager(new Configuration()))
             {
-                sync.WithInterval(TimeSpan.FromMinutes(15))
+                sync.WithInterval(TimeSpan.FromMinutes(2))
+                    .StopWhen((obj)=> input.Equals("stop", StringComparison.OrdinalIgnoreCase))
                     .Start();
             }
 
-			Console.WriteLine("Ending.");
-		    Console.ReadKey();
+		    //while (true)
+		    //{
+		    //    input = Console.ReadLine();
+		    //}
+
 		}
 	}
 }
