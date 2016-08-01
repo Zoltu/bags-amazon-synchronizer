@@ -108,7 +108,7 @@ namespace application.Synchronization
                 
             //get all the products at once ==> if product count is high it could take time
             //get products by last updated
-            var products = _dbContext.Products.Take(10).ToList();//to do try/catch
+            var products = _dbContext.Products.ToList();//to do try/catch
             for (int i = 0; i < products.Count; i++)
             {
                 var dbProd = products[i];
