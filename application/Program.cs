@@ -17,7 +17,7 @@ namespace application
             string input = "";
             using (var sync = new SyncManager(new Configuration()))
             {
-                sync.WithInterval(TimeSpan.FromMinutes(2))
+                sync.WithInterval(TimeSpan.FromMinutes(1))
                     .StopWhen((obj)=> input.Equals("stop", StringComparison.OrdinalIgnoreCase))
                     .Start();
             }

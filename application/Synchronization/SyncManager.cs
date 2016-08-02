@@ -17,7 +17,7 @@ namespace application.Synchronization
     //start with simple sync then add features
     //make it fluent API
     //updates in a dictionary
-    //errors in each update/ or only llast update
+    //errors in each update/ or only last update
     //nbre of updates
     //update request ==> update response
     //reporting level ==> debug/info/warn/error
@@ -25,10 +25,11 @@ namespace application.Synchronization
     public class SyncManager : IDisposable//<T> where T : class
     {
         #region Properties
-        private BagsContext _dbContext;
+        //private BagsContext _dbContext;
         private AmazonWebClient _amazonClient;
         private bool _reportProgress;
         private TimeSpan _interval;
+        private TimeSpan _intervalDefault = TimeSpan.FromHours(5);
         private bool _isIdle = true;
         private CancellationTokenSource _cancellationToken; 
         private static readonly object _lock = new object();
@@ -37,19 +38,23 @@ namespace application.Synchronization
         private Stopwatch _watch;
         private ISyncLogger _logger;
         private Predicate<object> _stopWhen;
+        private Configuration _config;
+        private int _updatesCount = 1;
+        private int _productsPerBatch = 100;//be carefull if new products come in between batches !!! ==> if they do then they are up to date because just added | Or get products by last updated
         public bool IsRunning { get { return !_isIdle;} }
         #endregion
 
         #region Ctors
         public SyncManager(Configuration config)
         {
+            _config = config;
             _logger = new ConsoleLogger();
-            _amazonClient = new AmazonWebClient(config.AmazonAccessKey, config.AmazonSecretKey, config.AmazonAssociateTag);
-            _dbContext = new BagsContext(config);
-            var serviceProvider = _dbContext.GetInfrastructure<IServiceProvider>();
-            var loggerFactory = serviceProvider.GetService<ILoggerFactory>();
-            loggerFactory.AddConsole(LogLevel.Debug);
-
+            _amazonClient = new AmazonWebClient(_config.AmazonAccessKey, _config.AmazonSecretKey, _config.AmazonAssociateTag);
+            //_dbContext = new BagsContext(config);
+            //var serviceProvider = _dbContext.GetInfrastructure<IServiceProvider>();
+            //var loggerFactory = serviceProvider.GetService<ILoggerFactory>();
+            //loggerFactory.AddConsole(LogLevel.Debug);
+            _watch = new Stopwatch();
             _logger.WriteEntry("Synchronization System Initialized ...", LoggingLevel.Info);
         }
         
@@ -78,7 +83,7 @@ namespace application.Synchronization
                 Thread.Sleep(1000);
             }
         }
-
+        
         public void Stop()
         {
             _timer.Dispose();
@@ -90,6 +95,7 @@ namespace application.Synchronization
         {
             _logger.WriteEntry("Synchronization System Paused ...", LoggingLevel.Info);
         }
+        
 
         public SyncManager WithInterval(TimeSpan interval)
         {
@@ -109,62 +115,116 @@ namespace application.Synchronization
         }
         private void CheckConfigAndSetDefaults()
         {
-            
+            if (_interval.TotalMilliseconds.Equals(0)) //interval was set to 0 on not at all
+            {
+                _interval = _intervalDefault;//set default delay between updates
+
+                _logger.WriteEntry($"Update Interval was set to its default value ({_intervalDefault} hours)", LoggingLevel.Info);
+            }
+                
+            //check amazon keys
+            //check dbcontext
         }
         
         private void ExecuteUpdate(Object state)
         {
             if (!_isIdle) return;//if still updating products do nothing
-                
+
+            _isIdle = false;//set the sync manager state to active
+
             //get all the products at once ==> if product count is high it could take time
             //get products by last updated
-            var products = FetchProductsFromDb();
-            if (products == null) return;
-            for (int i = 0; i < products.Count; i++)
+            using (var dbContext = new BagsContext(_config))
             {
-                var dbProd = products[i];
+                _logger.WriteEntry("##########################################################", LoggingLevel.Info);
+                _logger.WriteEntry($"########## Update #{_updatesCount} Started ##########", LoggingLevel.Info);
 
-                try
+                var summary = new UpdateSummary()
                 {
-                    
-                    //_watch.Start();
-                    var amzProd = _amazonClient.GetProductSummary(dbProd.Asin).Result;
-                    //what to do it product isn't available
-                    //what to do it if price changes ==> up/down
-                    //attributes must be added the the amazon product
-                    //if analytics ==> price fluctuation/availability change rate/....
+                    //ProductCount = products.Count,
+                    StartDate = DateTime.Now
+                };
 
-                    //_watch.Stop();
-                    //_watch.ElapsedMilliseconds*1000;
+                var startIndex = 0;
 
-                    _logger.WriteEntry($"@{dbProd.Asin} | Current Price : {dbProd.Price} |==> Amazon State : Price : {amzProd.Price} / Qty : {amzProd.Qty}", LoggingLevel.Debug);
+                //_logger.WriteEntry("Fetching products from the database ...", LoggingLevel.Debug);
 
-                    if (amzProd.IsUpdateRequired(dbProd))
+                while (true)//to do
+                {
+                    //Getting products from DB
+                    var products = FetchProductsFromDb(dbContext, startIndex, _productsPerBatch);
+                    if (products == null) break;
+                    summary.ProductCount += products.Count;//products.Count = _productsPerBatch
+                    startIndex += products.Count;
+
+                    //_logger.WriteEntry($"{products.Count} products found...", LoggingLevel.Debug);
+
+                    foreach (var dbProd in products)
                     {
-                        dbProd.Price = amzProd.Price;
+                        try
+                        {
+                            //what to do if product isn't available
+                            //what to do if price changes ==> up/down
+                            //attributes must be added the the amazon product
+                            //if analytics ==> price fluctuation/availability change rate/....
+
+                            ExecuteAndWait(() =>
+                            {
+                                var amzProd = _amazonClient.GetProductSummary(dbProd.Asin).Result;
+                                _logger.WriteEntry($"@Update#{_updatesCount} | @{dbProd.Asin} | Current Price : {dbProd.Price} |==> Amazon State : Price : {amzProd.Price} / Qty : {amzProd.Qty}", LoggingLevel.Debug);
+
+                                if (amzProd.IsUpdateRequired(dbProd))
+                                {
+                                    dbProd.Price = amzProd.Price;
+                                }
+
+                                dbContext.SaveChangesAsync();
+                                summary.UpdatedCount++;
+                            });
+
+                        }
+                        catch (Exception ex)
+                        {
+                            _logger.WriteEntry($"@{dbProd.Asin} : {ex.Message}", LoggingLevel.Error);
+                            summary.ErrorAsins.Add(dbProd.Asin);
+                        }
                     }
-
-                    Thread.Sleep(1000);//wait 1 sec ==> to do
                 }
-                catch (Exception ex)
-                {
-                    _logger.WriteEntry($"@{dbProd.Asin} : {ex.Message}", LoggingLevel.Error);
-                }
+ 
+                summary.EndDate = DateTime.Now;
+                _logger.WriteEntry($"########## Update #{_updatesCount++} Complete ... ##########", LoggingLevel.Info);
+                _logger.WriteEntry($"       {summary.ToString()}", LoggingLevel.Info);
             }
-
-            _dbContext.SaveChanges();
-
+            
             //reset the timer
             _timer.Change((int)Math.Ceiling(_interval.TotalMilliseconds), Timeout.Infinite);
             _isIdle = true;
             
         }
 
-        private List<Product> FetchProductsFromDb()
+        private List<Product> FetchProductsFromDb(BagsContext dbContext, int startIndex = -1, int productCount = -1)
         {
             try
             {
-                return _dbContext.Products.ToList();//.Take(10)
+                if (startIndex < 1)
+                    startIndex = 1;
+
+                //if (startIndex > 0)
+                //{
+                    if(productCount > 0)
+                        return dbContext.Products
+                                        .Skip(startIndex - 1)
+                                        .Take(productCount)
+                                        .ToList();
+                    else
+                        return dbContext.Products
+                                        .Skip(startIndex - 1)
+                                        .ToList();
+                //}
+                //else
+                //{
+                //    return dbContext.Products.ToList();
+                //}
             }
             catch (Exception ex)
             {
@@ -173,6 +233,21 @@ namespace application.Synchronization
             }
         }
 
+        private void ExecuteAndWait(Action action, int delayInMs = 1000)
+        {
+            _watch.Restart();
+
+            action.Invoke();
+            
+            //_logger.WriteEntry($"Elapsed : {_watch.ElapsedMilliseconds} Ms", LoggingLevel.Debug);
+
+            if (_watch.ElapsedMilliseconds >= delayInMs) //took more then one sec
+                return;//don't wait
+            else//wait the difference
+            {
+                Thread.Sleep(delayInMs - Convert.ToInt32(_watch.ElapsedMilliseconds));
+            }
+        }
 
         #region IDisposable
         public void Dispose(bool disposing)
