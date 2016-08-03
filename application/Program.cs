@@ -1,30 +1,32 @@
 ﻿using System;
 using System.Linq;
+using System.Xml.Linq;
+using application.Amazon;
+using application.Data;
+using application.Synchronization;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
-namespace Zoltu.BagsAmazonSynchronizer
+namespace application
 {
 	public class Program
 	{
 		public static void Main(string[] args)
 		{
-			Console.WriteLine("Starting.");
+            string input = "";
+            using (var sync = new SyncManager(new Configuration()))
+            {
+                sync.WithInterval(TimeSpan.FromMinutes(1))
+                    .StopWhen((obj)=> input.Equals("stop", StringComparison.OrdinalIgnoreCase))
+                    .Start();
+            }
 
-			var configuration = new Configuration();
-			using (var db = new Models.BagsContext(configuration))
-			{
-				// this hooks up console logging to the DbContext so we can see the queries being executed in the console output
-				var serviceProvider = db.GetInfrastructure<IServiceProvider>();
-				var loggerFactory = serviceProvider.GetService<ILoggerFactory>();
-				loggerFactory.AddConsole(LogLevel.Information);
+		    //while (true)
+		    //{
+		    //    input = Console.ReadLine();
+		    //}
 
-				// TODO
-				Console.WriteLine(db.Products.First().Name);
-			}
-
-			Console.WriteLine("Ending.");
 		}
 	}
 }

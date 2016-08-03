@@ -1,7 +1,7 @@
 using System;
 using Microsoft.Extensions.Configuration;
 
-namespace Zoltu.BagsAmazonSynchronizer
+namespace application
 {
 	public class Configuration
 	{

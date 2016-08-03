@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using Newtonsoft.Json;
 
-namespace Zoltu.BagsAmazonSynchronizer.Models
+namespace application.Models
 {
 	public class Product
 	{

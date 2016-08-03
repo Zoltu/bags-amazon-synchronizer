@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 
-namespace Zoltu.BagsAmazonSynchronizer.Models
+namespace application.Models
 {
 	public class Tag
 	{

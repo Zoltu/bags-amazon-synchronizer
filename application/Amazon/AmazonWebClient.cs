@@ -2,15 +2,16 @@
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Threading.Tasks;
+using application.Models;
 
-namespace Zoltu.BagsAmazonSynchronizer.Amazon
+namespace application.Amazon
 {
-	public class AmazonUtilities
+	public class AmazonWebClient
 	{
 		private readonly String _associateTag;
 		private RequestSigner _requestSigner;
 
-		public AmazonUtilities(String awsAccessKeyId, String awsSecretKey, String associateTag)
+		public AmazonWebClient(String awsAccessKeyId, String awsSecretKey, String associateTag)
 		{
 			_associateTag = associateTag;
 			_requestSigner = new RequestSigner(awsAccessKeyId, awsSecretKey, "ecs.amazonaws.com");
@@ -27,7 +28,7 @@ namespace Zoltu.BagsAmazonSynchronizer.Amazon
 			{
 				{ "IdType", "ASIN" },
 				{ "Operation", "ItemLookup" },
-				{ "ResponseGroup", "Images,Offers,ItemAttributes" },
+				{ "ResponseGroup", "Offers,ItemAttributes" },//"Images,Offers,ItemAttributes"
 				{ "Service", "AWSECommerceService" },
 				{ "AssociateTag", _associateTag },
 				{ "ItemId", asin }
@@ -38,7 +39,14 @@ namespace Zoltu.BagsAmazonSynchronizer.Amazon
 			return await httpClient.GetStringAsync(amazonRequestUri);
 		}
 
-		public String ConvertImageLinkToHttps(String source)
+        public async Task<ProductSummary> GetProductSummary(String asin)
+        {
+            var xmlString = await GetProductDetailsXml(asin);
+
+            return xmlString.ToProductSummary();
+        }
+
+        public String ConvertImageLinkToHttps(String source)
 		{
 			var uriBuilder = new UriBuilder(source);
 			uriBuilder.Scheme = "https";
