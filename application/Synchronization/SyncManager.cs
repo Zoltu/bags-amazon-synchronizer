@@ -12,7 +12,7 @@ namespace application.Synchronization
     {
         private Dictionary<string, ISynchronizer> _synchronizers;
         private Configuration _config;
-        private List<Task> _runningSynchronizers;
+        //private List<Task> _runningSynchronizers;
         private CancellationTokenSource _cancelToken;
         private bool _disposed;
 
@@ -26,7 +26,7 @@ namespace application.Synchronization
                 throw new ArgumentNullException("Configuration cannot be null.");
 
             _synchronizers = new Dictionary<string, ISynchronizer>();
-            _runningSynchronizers= new List<Task>(); 
+            //_runningSynchronizers= new List<Task>(); 
             _config = config;
         }
 
@@ -88,12 +88,13 @@ namespace application.Synchronization
         /// <param name="cancelToken"></param>
         public void StartAll(CancellationToken cancelToken)
         {
+            var runningSynchronizers = new List<Task>();
             foreach (var synchronizer in _synchronizers.Values)//might need for loop
             {
-                _runningSynchronizers.Add(synchronizer.Start(cancelToken));
+                runningSynchronizers.Add(synchronizer.Start(cancelToken));
             }
 
-            Task.WaitAll(_runningSynchronizers.ToArray());
+            Task.WaitAll(runningSynchronizers.ToArray());
         }
         
         /// <summary>
