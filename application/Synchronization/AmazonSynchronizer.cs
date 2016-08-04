@@ -78,7 +78,7 @@ namespace application.Synchronization
                                 if (amzProd.IsUpdateRequired(dbProd))
                                 {
                                     dbProd.Price = amzProd.Price;
-                                    dbContext.SaveChangesAsync();
+                                    dbContext.SaveChanges();//if async , the db context can request a new batch before the save is made ==> throws an exception, because it's not thread safe
                                     summary.UpdatedCount++;
                                 }
                                 
