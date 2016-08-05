@@ -6,7 +6,8 @@ namespace application.Data
 	public class BagsContext : DbContext
     {
 		public DbSet<Product> Products { get; set; }
-		public DbSet<Tag> Tags { get; set; }
+        public DbSet<AmazonProduct> AmazonProducts { get; set; }
+        public DbSet<Tag> Tags { get; set; }
 		public DbSet<TagCategory> TagCategories { get; set; }
 		public DbSet<ProductTag> ProductTags { get; set; }
 

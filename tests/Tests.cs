@@ -10,5 +10,7 @@ namespace Zoltu.BagsAmazonSynchronizer.Tests
 		{
 			Assert.True(true);
 		}
-	}
+
+        //new CancellationTokenSource(1 * 60 * 1000).Token
+    }
 }

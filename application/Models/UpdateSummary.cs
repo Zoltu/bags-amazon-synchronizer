@@ -24,7 +24,8 @@ namespace application.Models
         public override string ToString()
         {
             var sb = new StringBuilder();
-            //sb.AppendLine($"########## Summary ##########");
+            sb.AppendLine("");
+            sb.AppendLine($"########## Summary ##########");
             sb.AppendLine($"Total Products : {ProductCount}");
             sb.AppendLine($"Total Updated Products : {UpdatedCount}");
             sb.AppendLine($"Total Update Errors  : {ErrorCount}");

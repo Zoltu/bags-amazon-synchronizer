@@ -16,13 +16,8 @@ namespace application.Amazon
 			_associateTag = associateTag;
 			_requestSigner = new RequestSigner(awsAccessKeyId, awsSecretKey, "ecs.amazonaws.com");
 		}
-
-		public String CreateAssociateLink(String asin)
-		{
-			return $"https://www.amazon.com/gp/product/{asin}/?tag={_associateTag}";
-		}
-
-		public async Task<String> GetProductDetailsXml(String asin)
+        
+		private async Task<String> GetProductDetailsXml(String asin)
 		{
 			var requestParameters = new Dictionary<String, String>
 			{
@@ -36,7 +31,8 @@ namespace application.Amazon
 
 			var amazonRequestUri = _requestSigner.Sign(requestParameters);
 			var httpClient = new HttpClient();
-			return await httpClient.GetStringAsync(amazonRequestUri);
+		    httpClient.Timeout = TimeSpan.FromSeconds(5);
+            return await httpClient.GetStringAsync(amazonRequestUri);
 		}
 
         public async Task<ProductSummary> GetProductSummary(String asin)
@@ -54,5 +50,10 @@ namespace application.Amazon
 			uriBuilder.Port = -1;
 			return uriBuilder.ToString();
 		}
-	}
+
+        public String CreateAssociateLink(String asin)
+        {
+            return $"https://www.amazon.com/gp/product/{asin}/?tag={_associateTag}";
+        }
+    }
 }
