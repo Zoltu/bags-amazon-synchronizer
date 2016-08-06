@@ -12,7 +12,7 @@ namespace application.Data
 		public DbSet<ProductTag> ProductTags { get; set; }
 
 		private Configuration _configuration;
-
+        
 		public BagsContext(Configuration configuration)
 		{
 			_configuration = configuration;
@@ -22,5 +22,6 @@ namespace application.Data
 		{
 			optionsBuilder.UseSqlServer(_configuration.SqlServerConnectionString);
 		}
-	}
+        
+    }
 }
