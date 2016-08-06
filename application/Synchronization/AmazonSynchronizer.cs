@@ -46,9 +46,25 @@ namespace application.Synchronization
                         ExecuteAndWait(() =>
                         {
                             var amzProd = _amazonClient.GetProductSummary(dbProd.Asin).Result;
-                            if (amzProd == null)
+                            if (amzProd == null)//usually the product wasn't found or it's not available qty wise ==> either way set qty to 0 to mark its unavailability
                             {
-                                summary.ErrorAsins.Add(dbProd.Asin);//usually the product wasn't found or it's not available qty wise
+                                summary.ErrorAsins.Add(dbProd.Asin);
+                                var pr = GetAmazonProductForAsin(dbContext, dbProd.Asin);
+                                if (pr == null)//it means that this is a new product and must be inserted into the AmazonProduct table
+                                {
+                                    dbContext.AmazonProducts.Add(new AmazonProduct
+                                    {
+                                        LastChecked = DateTime.Now,
+                                        Quantity = 0,
+                                        Product = dbProd
+                                    });
+                                }
+                                else//update qty and last checked date
+                                {
+                                    pr.LastChecked = DateTime.Now;
+                                    pr.Quantity = 0;
+                                }
+                                dbContext.SaveChanges();
                                 return;
                             }
                                 
@@ -58,7 +74,7 @@ namespace application.Synchronization
                             {
                                 //price update will be made in Product, Qty,... in AmazonProduct
                                 dbProd.Price = amzProd.Price;
-                                var pr = GetAmazonProductForAsin(dbContext, amzProd.Asin);
+                                var pr = GetAmazonProductForAsin(dbContext, dbProd.Asin);
                                 if (pr == null)//it means that this is a new product and must be inserted into the AmazonProduct table
                                 {
                                     dbContext.AmazonProducts.Add(new AmazonProduct
