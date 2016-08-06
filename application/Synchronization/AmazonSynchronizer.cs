@@ -49,21 +49,7 @@ namespace application.Synchronization
                             if (amzProd == null)//usually the product wasn't found or it's not available qty wise ==> either way set qty to 0 to mark its unavailability
                             {
                                 summary.ErrorAsins.Add(dbProd.Asin);
-                                var pr = GetAmazonProductForAsin(dbContext, dbProd.Asin);
-                                if (pr == null)//it means that this is a new product and must be inserted into the AmazonProduct table
-                                {
-                                    dbContext.AmazonProducts.Add(new AmazonProduct
-                                    {
-                                        LastChecked = DateTime.Now,
-                                        Quantity = 0,
-                                        Product = dbProd
-                                    });
-                                }
-                                else//update qty and last checked date
-                                {
-                                    pr.LastChecked = DateTime.Now;
-                                    pr.Quantity = 0;
-                                }
+                                UpdateAmazonProduct(dbContext, dbProd, 0);
                                 dbContext.SaveChanges();
                                 return;
                             }
@@ -74,21 +60,7 @@ namespace application.Synchronization
                             {
                                 //price update will be made in Product, Qty,... in AmazonProduct
                                 dbProd.Price = amzProd.Price;
-                                var pr = GetAmazonProductForAsin(dbContext, dbProd.Asin);
-                                if (pr == null)//it means that this is a new product and must be inserted into the AmazonProduct table
-                                {
-                                    dbContext.AmazonProducts.Add(new AmazonProduct
-                                    {
-                                        LastChecked = DateTime.Now,
-                                        Quantity = amzProd.Qty,
-                                        Product = dbProd
-                                    });
-                                }
-                                else//update qty and last checked date
-                                {
-                                    pr.LastChecked = DateTime.Now;
-                                    pr.Quantity = amzProd.Qty;
-                                }
+                                UpdateAmazonProduct(dbContext, dbProd, amzProd.Qty);
                                 dbContext.SaveChanges();//if async, the db context can request a new batch before the save is made ==> throws an exception, because it's not thread safe
                                 summary.UpdatedCount++;
                             }
@@ -145,6 +117,25 @@ namespace application.Synchronization
             }
 
             return null;
+        }
+
+        private void UpdateAmazonProduct(BagsContext dbContext, Product dbProd, int qty)
+        {
+            var pr = GetAmazonProductForAsin(dbContext, dbProd.Asin);
+            if (pr == null)//it means that this is a new product and must be inserted into the AmazonProduct table
+            {
+                dbContext.AmazonProducts.Add(new AmazonProduct
+                {
+                    LastChecked = DateTime.Now,
+                    Quantity = qty,
+                    Product = dbProd
+                });
+            }
+            else//update qty and last checked date
+            {
+                pr.LastChecked = DateTime.Now;
+                pr.Quantity = qty;
+            }
         }
 
     }
