@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace application.Log
+namespace application.Logger
 {
     public class ConsoleLogger : ISyncLogger
     {

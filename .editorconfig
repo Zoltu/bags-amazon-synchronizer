@@ -1,7 +1,7 @@
 root = true
 
 [*]
-indent_style = tab
+indent_style = space
 
 [project.json]
 indent_style = space

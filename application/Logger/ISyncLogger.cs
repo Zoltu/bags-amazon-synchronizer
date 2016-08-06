@@ -1,4 +1,4 @@
-﻿namespace application.Log
+﻿namespace application.Logger
 {
     public enum LoggingLevel
     {
