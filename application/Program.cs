@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Threading;
-using application.Log;
+using application.Logger;
 using application.Synchronization;
 
 namespace application

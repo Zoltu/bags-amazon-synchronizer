@@ -6,7 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using application.Amazon;
 using application.Data;
-using application.Log;
+using application.Logger;
 using application.Models;
 
 namespace application.Synchronization

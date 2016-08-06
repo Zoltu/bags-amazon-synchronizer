@@ -2,7 +2,7 @@
 using System.Linq;
 using System.Threading;
 using application.Data;
-using application.Log;
+using application.Logger;
 using application.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -49,7 +49,7 @@ namespace application.Synchronization
                             if (amzProd == null)//usually the product wasn't found or it's not available qty wise ==> either way set qty to 0 to mark its unavailability
                             {
                                 summary.ErrorAsins.Add(dbProd.Asin);
-                                UpdateAmazonProduct(dbContext, dbProd, 0);
+                                UpdateAmazonProduct(dbContext, dbProd, 0);//add or update the AmazonProduct entity and set its qty to 0 to mark its unvailability
                                 dbContext.SaveChanges();
                                 return;
                             }
