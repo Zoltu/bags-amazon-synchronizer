@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using application.Data;
@@ -14,67 +15,76 @@ namespace application.Synchronization
         
         protected override void ExecuteUpdateInternal()
         {
-            using (var dbContext = new BagsContext(_config))
-            {
+
                 _logger.WriteEntry("##########################################################", LoggingLevel.Info);
                 _logger.WriteEntry($"########## Update #{_updatesCount} Started ##########", LoggingLevel.Info);
                 
-                _logger.WriteEntry("Fetching products from the database ...", LoggingLevel.Debug);
-                
-                //Getting products from DB
-                var products = dbContext.Products.ToList();
-                //var amazonProducts = dbContext.AmazonProducts.Include(p => p.Product).ToList();
-                if (products == null || products.Count == 0)
-                    return;
+                //_logger.WriteEntry("Fetching products from the database ...", LoggingLevel.Debug);
 
                 var summary = new UpdateSummary()
                 {
-                    ProductCount = products.Count,
+                    //ProductCount = products.Count,
                     StartDate = DateTime.Now
                 };
 
-                _logger.WriteEntry($"{products.Count} products found...", LoggingLevel.Debug);
+                var startIndex = 0;
 
-                foreach (var dbProd in products)
-                {
-                    try
-                    {
-                        //if cancelled ==> exit
-                        if (_cancelToken.IsCancellationRequested)
-                            return;
-                        
-                        ExecuteAndWait(() =>
-                        {
-                            var amzProd = _amazonClient.GetProductSummary(dbProd.Asin).Result;
-                            if (!amzProd.IsAvailable)//product unavailable or an error occured while getting product from API
-                            {
-                                summary.UnavailableCount++;
-                            }
-                            
-                            if (amzProd.IsUpdateRequired(dbProd.AmazonProduct))
-                            {
-                                summary.UpdatedCount++;
-                            }
-
-                            UpdateAmazonProduct(dbContext, amzProd, dbProd);
-
-                            _logger.WriteEntry($"@Update#{_updatesCount} | @{dbProd.Asin} | Current Price : {dbProd.Price} |=> Amazon State : Price : {amzProd.Price} / Available : {amzProd.IsAvailable}", LoggingLevel.Debug);
-
-                        });
-
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.WriteEntry($"@{dbProd.Asin} : {ex.GetLastErrorMessage()}", LoggingLevel.Error);
-                        summary.ErrorAsins.Add(dbProd.Asin);
-                    }
-                }
                 
-                summary.EndDate = DateTime.Now;
-                _logger.WriteEntry($"########## Update #{_updatesCount++} Complete ... ##########", LoggingLevel.Info);
-                _logger.WriteEntry($"       {summary.ToString()}", LoggingLevel.Info);
-            }
-            
+                while (true)
+                {
+                    using (var dbContext = new BagsContext(_config))
+                    {
+                        //Getting products from DB
+                        var products = FetchProductsFromDb(dbContext, startIndex, _productsPerBatch);
+                        if (products == null || products.Count == 0)
+                            break;
+
+                        summary.ProductCount += products.Count;
+                        startIndex += products.Count;
+
+                        //_logger.WriteEntry($"{products.Count} products found...", LoggingLevel.Debug);
+
+                        foreach (var dbProd in products)
+                        {
+                            try
+                            {
+                                //if cancelled ==> exit
+                                if (_cancelToken.IsCancellationRequested)
+                                    return;
+
+                                ExecuteAndWait(() =>
+                                    {
+                                        var amzProd = _amazonClient.GetProductSummary(dbProd.Asin).Result;
+                                        if (!amzProd.IsAvailable)//product unavailable or an error occured while getting product from API
+                                        {
+                                            summary.UnavailableCount++;
+                                        }
+
+                                        if (amzProd.IsUpdateRequired(dbProd.AmazonProduct))
+                                        {
+                                            summary.UpdatedCount++;
+                                        }
+
+                                        UpdateAmazonProduct(dbContext, amzProd, dbProd);
+
+                                        _logger.WriteEntry($"@Update#{_updatesCount} | @{dbProd.Asin} | Current Price : {dbProd.Price} |=> Amazon State : Price : {amzProd.Price} / Available : {amzProd.IsAvailable}", LoggingLevel.Debug);
+
+                                    });
+
+                        }
+                            catch (Exception ex)
+                            {
+                                _logger.WriteEntry($"@{dbProd.Asin} : {ex.GetLastErrorMessage()}", LoggingLevel.Error);
+                                summary.ErrorAsins.Add(dbProd.Asin);
+                            }
+                        } //foreach
+                    }//using
+                
+            }//while
+
+            summary.EndDate = DateTime.Now;
+            _logger.WriteEntry($"########## Update #{_updatesCount++} Complete ... ##########", LoggingLevel.Info);
+            _logger.WriteEntry($"       {summary.ToString()}", LoggingLevel.Info);
         }
         
         /// <summary>
@@ -86,7 +96,14 @@ namespace application.Synchronization
         {
             _watch.Restart();
 
-            action.Invoke();
+            try
+            {
+                action.Invoke();
+            }
+            catch (Exception ex)
+            {
+                _logger.WriteEntry($"@ExecuteAndWait : {ex.GetLastErrorMessage()}", LoggingLevel.Error);
+            }
             
             //_logger.WriteEntry($"Elapsed : {_watch.ElapsedMilliseconds} Ms", LoggingLevel.Debug);
 
@@ -108,7 +125,7 @@ namespace application.Synchronization
             }
             catch (Exception ex)
             {
-                _logger.WriteEntry($"@GetAmazonProductForAsin | @{asin} : {ex.GetLastErrorMessage()}", LoggingLevel.Error);
+                _logger.WriteEntry($"@GetAmazonProductByAsin | @{asin} : {ex.GetLastErrorMessage()}", LoggingLevel.Error);
             }
 
             return null;
@@ -157,5 +174,28 @@ namespace application.Synchronization
 
         }
 
+        private List<Product> FetchProductsFromDb(BagsContext dbContext, int startIndex = -1, int productCount = -1)
+        {
+            try
+            {
+                if (startIndex < 1)
+                    startIndex = 1;
+
+                if (productCount > 0)
+                    return dbContext.Products
+                                    .Skip(startIndex - 1)
+                                    .Take(productCount)
+                                    .ToList();
+                else
+                    return dbContext.Products
+                                    .Skip(startIndex - 1)
+                                    .ToList();
+            }
+            catch (Exception ex)
+            {
+                _logger.WriteEntry($"Error getting products from DB : {ex.Message}", LoggingLevel.Error);
+                return null;
+            }
+        }
     }
 }

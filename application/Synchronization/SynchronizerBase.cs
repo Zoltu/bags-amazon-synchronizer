@@ -31,7 +31,7 @@ namespace application.Synchronization
         protected Predicate<object> _stopWhen;
         protected Configuration _config;
         protected int _updatesCount = 1;
-        protected int _productsPerBatch = 10;//be carefull if new products come in between batches !!! ==> if they do then they are up to date because just added | Or get products by last updated
+        protected int _productsPerBatch = 10;
         public bool IsRunning { get { return !_isIdle; } }
         #endregion
         
