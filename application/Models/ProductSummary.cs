@@ -54,26 +54,17 @@ namespace application.Models
                 //if it has at least an offer (prime or not isn't decided yet)
                 if (Convert.ToInt32(offers.Single("TotalOffers").Value) > 0)
                 {
-                    var bestOffer = GetBestPrimeOffer(offers);//i.e : prime + lowest price
-                    if (bestOffer == null) //i.e : there was no prime offer
-                    {
+                    var bestOffer = GetBestPrimeOffer(offers);
+
+                    //if there was a prime offer
+                    if (bestOffer != null)
                         return new ProductSummary()
                         {
                             Asin = asin,
-                            Price = Convert.ToInt32(lowestNewPrice),
-                            IsPrime = false,
-                            IsAvailable = false
+                            Price = bestOffer.Price,
+                            IsPrime = bestOffer.IsEligibleForPrime,//always true
+                            IsAvailable = true
                         };
-                    }
-
-                    //if there was a prime offer
-                    return new ProductSummary()
-                    {
-                        Asin = asin,
-                        Price = bestOffer.Price,
-                        IsPrime = bestOffer.IsEligibleForPrime,//always true
-                        IsAvailable = true
-                    };
                 }
 
                 //if TotalOffers = 0 ==> Unavailable
@@ -88,7 +79,9 @@ namespace application.Models
             return new ProductSummary()
             {
                 Asin = asin, //not needed
-                Price = Convert.ToInt64(Math.Ceiling(lowestNewPrice))
+                Price = Convert.ToInt64(Math.Ceiling(lowestNewPrice)),
+                IsAvailable = false,
+                IsPrime = false
             };
         }
 

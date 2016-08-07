@@ -46,24 +46,19 @@ namespace application.Synchronization
                         ExecuteAndWait(() =>
                         {
                             var amzProd = _amazonClient.GetProductSummary(dbProd.Asin).Result;
-                            if (amzProd == null)//product unavailable or an error occured while getting product from API
+                            if (!amzProd.IsAvailable)//product unavailable or an error occured while getting product from API
                             {
-                                //summary.ErrorAsins.Add(dbProd.Asin);
-                                UpdateAmazonProduct(dbContext, amzProd, dbProd);//add or update the AmazonProduct entity and set its qty to 0 to mark its unvailability
                                 summary.UnavailableCount++;
-                                return;
                             }
-                                
-                            _logger.WriteEntry($"@Update#{_updatesCount} | @{dbProd.Asin} | Current Price : {dbProd.Price} |==> Amazon State : Price : {amzProd.Price} / Qty : {amzProd.Qty}", LoggingLevel.Debug);
 
+                            _logger.WriteEntry($"@Update#{_updatesCount} | @{dbProd.Asin} | Current Price : {dbProd.Price} |==> Amazon State : Price : {amzProd.Price} / Qty : {amzProd.Qty}", LoggingLevel.Debug);
+                            
                             if (amzProd.IsUpdateRequired(dbProd.AmazonProduct))
                             {
-                                //price update will be made in Product, Qty,... in AmazonProduct
-                                //dbProd.Price = amzProd.Price;
-                                UpdateAmazonProduct(dbContext, amzProd, dbProd);
                                 summary.UpdatedCount++;
                             }
-                                
+
+                            UpdateAmazonProduct(dbContext, amzProd, dbProd);
                         });
 
                     }
@@ -132,12 +127,11 @@ namespace application.Synchronization
                     Product = dbProd
                 });
             }
-            else//update qty and last checked date
+            else//update existing amazon product
             {
                 pr.Price = (prodSum.Price > 0) ? Convert.ToInt32(prodSum.Price) : Convert.ToInt32(dbProd.Price);
                 pr.Available = prodSum.IsAvailable;
                 pr.LastChecked = DateTime.Now;
-                
             }
 
             //if async, the db context can request a new batch before the save is made ==> throws an exception, because it's not thread safe
