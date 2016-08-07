@@ -22,7 +22,7 @@ namespace application.Synchronization
                 _logger.WriteEntry("Fetching products from the database ...", LoggingLevel.Debug);
                 
                 //Getting products from DB
-                var products = dbContext.Products.ToList();
+                var products = dbContext.Products.Take(10).ToList();
                 //var amazonProducts = dbContext.AmazonProducts.Include(p => p.Product).ToList();
                 if (products == null || products.Count == 0)
                     return;
@@ -46,22 +46,21 @@ namespace application.Synchronization
                         ExecuteAndWait(() =>
                         {
                             var amzProd = _amazonClient.GetProductSummary(dbProd.Asin).Result;
-                            if (amzProd == null)//usually the product wasn't found or it's not available qty wise ==> either way set qty to 0 to mark its unavailability
+                            if (amzProd == null)//product unavailable or an error occured while getting product from API
                             {
-                                summary.ErrorAsins.Add(dbProd.Asin);
-                                UpdateAmazonProduct(dbContext, dbProd, 0);//add or update the AmazonProduct entity and set its qty to 0 to mark its unvailability
-                                dbContext.SaveChanges();
+                                //summary.ErrorAsins.Add(dbProd.Asin);
+                                UpdateAmazonProduct(dbContext, amzProd, dbProd);//add or update the AmazonProduct entity and set its qty to 0 to mark its unvailability
+                                summary.UnavailableCount++;
                                 return;
                             }
                                 
                             _logger.WriteEntry($"@Update#{_updatesCount} | @{dbProd.Asin} | Current Price : {dbProd.Price} |==> Amazon State : Price : {amzProd.Price} / Qty : {amzProd.Qty}", LoggingLevel.Debug);
 
-                            if (amzProd.IsUpdateRequired(dbProd))
+                            if (amzProd.IsUpdateRequired(dbProd.AmazonProduct))
                             {
                                 //price update will be made in Product, Qty,... in AmazonProduct
-                                dbProd.Price = amzProd.Price;
-                                UpdateAmazonProduct(dbContext, dbProd, amzProd.Qty);
-                                dbContext.SaveChanges();//if async, the db context can request a new batch before the save is made ==> throws an exception, because it's not thread safe
+                                //dbProd.Price = amzProd.Price;
+                                UpdateAmazonProduct(dbContext, amzProd, dbProd);
                                 summary.UpdatedCount++;
                             }
                                 
@@ -109,7 +108,7 @@ namespace application.Synchronization
             {
                 return dbContext.AmazonProducts
                                 .Include(pr=>pr.Product)
-                                .FirstOrDefault(p => p.Product.Asin.Equals(asin, StringComparison.OrdinalIgnoreCase));
+                                .FirstOrDefault(p => p.Asin.Equals(asin, StringComparison.OrdinalIgnoreCase));
             }
             catch (Exception ex)
             {
@@ -119,23 +118,30 @@ namespace application.Synchronization
             return null;
         }
 
-        private void UpdateAmazonProduct(BagsContext dbContext, Product dbProd, int qty)
+        private void UpdateAmazonProduct(BagsContext dbContext, ProductSummary prodSum, Product dbProd)
         {
-            var pr = GetAmazonProductForAsin(dbContext, dbProd.Asin);
+            var pr = GetAmazonProductForAsin(dbContext, prodSum.Asin);
             if (pr == null)//it means that this is a new product and must be inserted into the AmazonProduct table
             {
                 dbContext.AmazonProducts.Add(new AmazonProduct
                 {
+                    Asin = prodSum.Asin,
+                    Price = (prodSum.Price > 0) ? Convert.ToInt32(prodSum.Price) : Convert.ToInt32(dbProd.Price),
                     LastChecked = DateTime.Now,
-                    Quantity = qty,
+                    Available = prodSum.IsAvailable,
                     Product = dbProd
                 });
             }
             else//update qty and last checked date
             {
+                pr.Price = (prodSum.Price > 0) ? Convert.ToInt32(prodSum.Price) : Convert.ToInt32(dbProd.Price);
+                pr.Available = prodSum.IsAvailable;
                 pr.LastChecked = DateTime.Now;
-                pr.Quantity = qty;
+                
             }
+
+            //if async, the db context can request a new batch before the save is made ==> throws an exception, because it's not thread safe
+            dbContext.SaveChanges();
         }
 
     }

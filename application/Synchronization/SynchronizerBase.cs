@@ -17,7 +17,7 @@ namespace application.Synchronization
         #region Properties
         public string Id { get; set; }
         public string Name { get;  set; }
-        protected AmazonWebClient _amazonClient;
+        protected AmazonUtilities _amazonClient;
         protected bool _reportProgress;
         protected TimeSpan _interval;
         protected TimeSpan _intervalDefault = TimeSpan.FromHours(5);
@@ -39,7 +39,7 @@ namespace application.Synchronization
         {
             _config = config;
             _logger = new ConsoleLogger();
-            _amazonClient = new AmazonWebClient(_config.AmazonAccessKey, _config.AmazonSecretKey, _config.AmazonAssociateTag);
+            _amazonClient = new AmazonUtilities(_config.AmazonAccessKey, _config.AmazonSecretKey, _config.AmazonAssociateTag);
             _watch = new Stopwatch();
             _logger.WriteEntry("Synchronization System Initialized ...", LoggingLevel.Info);
         }

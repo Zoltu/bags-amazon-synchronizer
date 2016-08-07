@@ -6,12 +6,17 @@ namespace application.Models
     public class AmazonProduct
     {
         [Key]
-        public int Id { get; set; }
-        
-        public int Quantity { get; set; }
+        public Int32 Id { get; set; }
 
-        public DateTime LastChecked { get; set; }
+        public Int32 Price { get; set; }
 
-        public Product Product { get; set; }    
+        public Boolean Available { get; set; }
+
+        public String Asin { get; set; }
+
+        public DateTimeOffset LastChecked { get; set; }
+
+        [Required]
+        public Product Product { get; set; }
     }
 }
