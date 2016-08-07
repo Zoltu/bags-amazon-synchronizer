@@ -74,8 +74,7 @@ namespace application.Models
             {
                 //some products become out of stock or removed for good
             }
-
-            //return null;
+            
             return new ProductSummary()
             {
                 Asin = asin, //not needed

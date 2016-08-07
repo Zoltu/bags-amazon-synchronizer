@@ -12,7 +12,7 @@ namespace application
 
 		    using (var amz = new AmazonSynchronizer(new Configuration()))
 		    {
-                amz.WithInterval(TimeSpan.FromMinutes(1))
+                amz.WithInterval(TimeSpan.FromMinutes(30))
                     .StopWhen((obj) => false)
                     .SetLogger(new SimpleFileLogger())
                     .Start(CancellationToken.None)

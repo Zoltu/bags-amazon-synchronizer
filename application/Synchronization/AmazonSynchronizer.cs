@@ -22,7 +22,7 @@ namespace application.Synchronization
                 _logger.WriteEntry("Fetching products from the database ...", LoggingLevel.Debug);
                 
                 //Getting products from DB
-                var products = dbContext.Products.Take(10).ToList();
+                var products = dbContext.Products.ToList();
                 //var amazonProducts = dbContext.AmazonProducts.Include(p => p.Product).ToList();
                 if (products == null || products.Count == 0)
                     return;
@@ -50,8 +50,6 @@ namespace application.Synchronization
                             {
                                 summary.UnavailableCount++;
                             }
-
-                            _logger.WriteEntry($"@Update#{_updatesCount} | @{dbProd.Asin} | Current Price : {dbProd.Price} |==> Amazon State : Price : {amzProd.Price} / Qty : {amzProd.Qty}", LoggingLevel.Debug);
                             
                             if (amzProd.IsUpdateRequired(dbProd.AmazonProduct))
                             {
@@ -59,6 +57,9 @@ namespace application.Synchronization
                             }
 
                             UpdateAmazonProduct(dbContext, amzProd, dbProd);
+
+                            _logger.WriteEntry($"@Update#{_updatesCount} | @{dbProd.Asin} | Current Price : {dbProd.Price} |=> Amazon State : Price : {amzProd.Price} / Available : {amzProd.IsAvailable}", LoggingLevel.Debug);
+
                         });
 
                     }
@@ -97,7 +98,7 @@ namespace application.Synchronization
             }
         }
 
-        private AmazonProduct GetAmazonProductForAsin(BagsContext dbContext, string asin)
+        private AmazonProduct GetAmazonProductByAsin(BagsContext dbContext, string asin)
         {
             try
             {
@@ -115,27 +116,45 @@ namespace application.Synchronization
 
         private void UpdateAmazonProduct(BagsContext dbContext, ProductSummary prodSum, Product dbProd)
         {
-            var pr = GetAmazonProductForAsin(dbContext, prodSum.Asin);
+            #region # How it works # 
+            /*                
+                 +The update is made on the two tables : Product and AmazonProduct
+                 +The reason for that is because the Price exists in both tables and I don't know which one you are using in your backend API
+                 +When I update the price I do it for Product and AmazonProduct tables
+                 +When I insert an AmazonProduct for the first time : I add it in AmazonProduct table
+                 +If I update an existing AmazonProduct : I update its properties (price, availability, last checked, ...) and I update the price in the corresponding Product 
+            */
+            #endregion
+
+            var pr = GetAmazonProductByAsin(dbContext, prodSum.Asin);
+            var price = (prodSum.Price > 0) ? Convert.ToInt32(prodSum.Price) : Convert.ToInt32(dbProd.Price);
+
             if (pr == null)//it means that this is a new product and must be inserted into the AmazonProduct table
             {
-                dbContext.AmazonProducts.Add(new AmazonProduct
+                pr = new AmazonProduct
                 {
                     Asin = prodSum.Asin,
-                    Price = (prodSum.Price > 0) ? Convert.ToInt32(prodSum.Price) : Convert.ToInt32(dbProd.Price),
+                    Price = price,
                     LastChecked = DateTime.Now,
                     Available = prodSum.IsAvailable,
                     Product = dbProd
-                });
+                };
+
+                dbContext.AmazonProducts.Add(pr);
             }
             else//update existing amazon product
             {
-                pr.Price = (prodSum.Price > 0) ? Convert.ToInt32(prodSum.Price) : Convert.ToInt32(dbProd.Price);
+                pr.Price = price;
                 pr.Available = prodSum.IsAvailable;
                 pr.LastChecked = DateTime.Now;
             }
 
+            //Update the price in Product.Price
+            dbProd.Price = price;
+
             //if async, the db context can request a new batch before the save is made ==> throws an exception, because it's not thread safe
             dbContext.SaveChanges();
+
         }
 
     }
