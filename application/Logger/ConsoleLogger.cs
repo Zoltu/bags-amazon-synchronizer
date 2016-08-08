@@ -6,7 +6,7 @@ namespace application.Logger
     {
         public LoggingLevel Level { get; set; } = LoggingLevel.Debug;
 
-        public void WriteEntry(string entry, LoggingLevel level = LoggingLevel.Error)
+        public void WriteEntry(string entry, LoggingLevel level = LoggingLevel.Error, int updateId = -1)
         {
            
             if(Level <= level)

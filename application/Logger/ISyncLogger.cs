@@ -11,6 +11,6 @@
     public interface ISyncLogger
     {
         LoggingLevel Level { get; set; }
-        void WriteEntry(string entry, LoggingLevel level = LoggingLevel.Error);
+        void WriteEntry(string entry, LoggingLevel level = LoggingLevel.Error, int updateId = -1);
     }
 }

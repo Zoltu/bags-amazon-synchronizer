@@ -15,8 +15,8 @@ namespace application.Synchronization
         
         protected override void ExecuteUpdateInternal()
         {
-            _logger.WriteEntry("##########################################################", LoggingLevel.Info);
-            _logger.WriteEntry($"########## Update #{_updatesCount} Started ##########", LoggingLevel.Info);
+            _logger.WriteEntry("##########################################################", LoggingLevel.Info, _updatesCount);
+            _logger.WriteEntry($"########## Update #{_updatesCount} Started ##########", LoggingLevel.Info, _updatesCount);
                 
             //_logger.WriteEntry("Fetching products from the database ...", LoggingLevel.Debug);
 
@@ -27,7 +27,7 @@ namespace application.Synchronization
             };
 
             var startIndex = 0;
-            
+            var count = 0;
             while (true)
             {
                 using (var dbContext = new BagsContext(_config))
@@ -51,38 +51,47 @@ namespace application.Synchronization
                                 return;
 
                             ExecuteAndWait(() =>
+                            {
+                                var amzProd = _amazonClient.GetProductSummary(dbProd.Asin).Result;
+                                if (!amzProd.IsAvailable)
+                                    //product unavailable or an error occured while getting product from API
                                 {
-                                    var amzProd = _amazonClient.GetProductSummary(dbProd.Asin).Result;
-                                    if (!amzProd.IsAvailable)//product unavailable or an error occured while getting product from API
-                                    {
-                                        summary.UnavailableCount++;
-                                    }
+                                    summary.UnavailableCount++;
+                                }
 
-                                    if (amzProd.IsUpdateRequired(dbProd.AmazonProduct))
-                                    {
-                                        summary.UpdatedCount++;
-                                    }
+                                if (amzProd.IsUpdateRequired(dbProd.AmazonProduct))
+                                {
+                                    summary.UpdatedCount++;
+                                }
 
-                                    UpdateAmazonProduct(dbContext, amzProd, dbProd);
+                                UpdateAmazonProduct(dbContext, amzProd, dbProd);
 
-                                    _logger.WriteEntry($"@Update#{_updatesCount} | @{dbProd.Asin} | Current Price : {dbProd.Price} |=> Amazon State : Price : {amzProd.Price} / Available : {amzProd.IsAvailable}", LoggingLevel.Debug);
+                                _logger.WriteEntry($"@Update#{_updatesCount} | @Product#{count}| @{dbProd.Asin} | Current Price : {dbProd.Price} |=> Amazon State : Price : {amzProd.Price} / Available : {amzProd.IsAvailable}", LoggingLevel.Debug, _updatesCount);
 
-                                });
+                            });
 
-                    }
+                        }
                         catch (Exception ex)
                         {
-                            _logger.WriteEntry($"@ExecuteUpdateInternal | @{dbProd.Asin} : {ex.GetLastErrorMessage()}", LoggingLevel.Error);
+                            _logger.WriteEntry($"@ExecuteUpdateInternal | @{dbProd.Asin} : {ex.GetLastErrorMessage()}", LoggingLevel.Error, _updatesCount);
                             summary.ErrorAsins.Add(dbProd.Asin);
                         }
+                        finally
+                        {
+                            count++;
+                        }
                     } //foreach
+
+
+                    dbContext.SaveChanges();
+
                 }//using
                 
-        }//while
+            }//while
 
             summary.EndDate = DateTime.Now;
-            _logger.WriteEntry($"########## Update #{_updatesCount++} Complete ... ##########", LoggingLevel.Info);
-            _logger.WriteEntry($"       {summary.ToString()}", LoggingLevel.Info);
+            _logger.WriteEntry($"########## Update #{_updatesCount++} Complete ... ##########", LoggingLevel.Info, _updatesCount);
+            _logger.WriteEntry($"       {summary.ToString()}", LoggingLevel.Info, _updatesCount);
         }
         
         /// <summary>
@@ -100,10 +109,10 @@ namespace application.Synchronization
             }
             catch (Exception ex)
             {
-                _logger.WriteEntry($"@ExecuteAndWait : {ex.GetLastErrorMessage()}", LoggingLevel.Error);
+                _logger.WriteEntry($"@ExecuteAndWait : {ex.GetLastErrorMessage()}", LoggingLevel.Error, _updatesCount);
             }
 
-            //_logger.WriteEntry($"Elapsed : {_watch.ElapsedMilliseconds} Ms", LoggingLevel.Debug);
+            _logger.WriteEntry($"Elapsed : {_watch.ElapsedMilliseconds} Ms", LoggingLevel.Debug, _updatesCount);
 
             if (_watch.ElapsedMilliseconds >= delayInMs) //took more then one sec
                 return;//don't wait
@@ -123,7 +132,7 @@ namespace application.Synchronization
             }
             catch (Exception ex)
             {
-                _logger.WriteEntry($"@GetAmazonProductByAsin | @{asin} : {ex.GetLastErrorMessage()}", LoggingLevel.Error);
+                _logger.WriteEntry($"@GetAmazonProductByAsin | @{asin} : {ex.GetLastErrorMessage()}", LoggingLevel.Error, _updatesCount);
             }
 
             return null;
@@ -170,7 +179,7 @@ namespace application.Synchronization
             dbProd.Price = price;
 
             //if async, the db context can request a new batch before the save is made ==> throws an exception, because it's not thread safe
-            dbContext.SaveChanges(); 
+            //dbContext.SaveChanges(); 
             //}
 
         }
@@ -194,7 +203,7 @@ namespace application.Synchronization
             }
             catch (Exception ex)
             {
-                _logger.WriteEntry($"Error getting products from DB : {ex.Message}", LoggingLevel.Error);
+                _logger.WriteEntry($"Error getting products from DB : {ex.Message}", LoggingLevel.Error, _updatesCount);
                 return null;
             }
         }
