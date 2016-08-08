@@ -15,72 +15,70 @@ namespace application.Synchronization
         
         protected override void ExecuteUpdateInternal()
         {
-
-                _logger.WriteEntry("##########################################################", LoggingLevel.Info);
-                _logger.WriteEntry($"########## Update #{_updatesCount} Started ##########", LoggingLevel.Info);
+            _logger.WriteEntry("##########################################################", LoggingLevel.Info);
+            _logger.WriteEntry($"########## Update #{_updatesCount} Started ##########", LoggingLevel.Info);
                 
-                //_logger.WriteEntry("Fetching products from the database ...", LoggingLevel.Debug);
+            //_logger.WriteEntry("Fetching products from the database ...", LoggingLevel.Debug);
 
-                var summary = new UpdateSummary()
+            var summary = new UpdateSummary()
+            {
+                //ProductCount = products.Count,
+                StartDate = DateTime.Now
+            };
+
+            var startIndex = 0;
+            
+            while (true)
+            {
+                using (var dbContext = new BagsContext(_config))
                 {
-                    //ProductCount = products.Count,
-                    StartDate = DateTime.Now
-                };
+                    //Getting products from DB
+                    var products = FetchProductsFromDb(dbContext, startIndex, _productsPerBatch);
+                    if (products == null || products.Count == 0)
+                        break;
 
-                var startIndex = 0;
+                    summary.ProductCount += products.Count;
+                    startIndex += products.Count;
 
-                
-                while (true)
-                {
-                    using (var dbContext = new BagsContext(_config))
+                    //_logger.WriteEntry($"{products.Count} products found...", LoggingLevel.Debug);
+
+                    foreach (var dbProd in products)
                     {
-                        //Getting products from DB
-                        var products = FetchProductsFromDb(dbContext, startIndex, _productsPerBatch);
-                        if (products == null || products.Count == 0)
-                            break;
-
-                        summary.ProductCount += products.Count;
-                        startIndex += products.Count;
-
-                        //_logger.WriteEntry($"{products.Count} products found...", LoggingLevel.Debug);
-
-                        foreach (var dbProd in products)
+                        try
                         {
-                            try
-                            {
-                                //if cancelled ==> exit
-                                if (_cancelToken.IsCancellationRequested)
-                                    return;
+                            //if cancelled ==> exit
+                            if (_cancelToken.IsCancellationRequested)
+                                return;
 
-                                ExecuteAndWait(() =>
+                            ExecuteAndWait(() =>
+                                {
+                                    var amzProd = _amazonClient.GetProductSummary(dbProd.Asin).Result;
+                                    if (!amzProd.IsAvailable)//product unavailable or an error occured while getting product from API
                                     {
-                                        var amzProd = _amazonClient.GetProductSummary(dbProd.Asin).Result;
-                                        if (!amzProd.IsAvailable)//product unavailable or an error occured while getting product from API
-                                        {
-                                            summary.UnavailableCount++;
-                                        }
+                                        summary.UnavailableCount++;
+                                    }
 
-                                        if (amzProd.IsUpdateRequired(dbProd.AmazonProduct))
-                                        {
-                                            summary.UpdatedCount++;
-                                        }
+                                    if (amzProd.IsUpdateRequired(dbProd.AmazonProduct))
+                                    {
+                                        summary.UpdatedCount++;
+                                    }
 
-                                        UpdateAmazonProduct(dbContext, amzProd, dbProd);
+                                    UpdateAmazonProduct(dbContext, amzProd, dbProd);
 
-                                        _logger.WriteEntry($"@Update#{_updatesCount} | @{dbProd.Asin} | Current Price : {dbProd.Price} |=> Amazon State : Price : {amzProd.Price} / Available : {amzProd.IsAvailable}", LoggingLevel.Debug);
+                                    _logger.WriteEntry($"@Update#{_updatesCount} | @{dbProd.Asin} | Current Price : {dbProd.Price} |=> Amazon State : Price : {amzProd.Price} / Available : {amzProd.IsAvailable}", LoggingLevel.Debug);
 
-                                    });
+                                });
 
+                    }
+                        catch (Exception ex)
+                        {
+                            _logger.WriteEntry($"@ExecuteUpdateInternal | @{dbProd.Asin} : {ex.GetLastErrorMessage()}", LoggingLevel.Error);
+                            summary.ErrorAsins.Add(dbProd.Asin);
                         }
-                            catch (Exception ex)
-                            {
-                                _logger.WriteEntry($"@{dbProd.Asin} : {ex.GetLastErrorMessage()}", LoggingLevel.Error);
-                                summary.ErrorAsins.Add(dbProd.Asin);
-                            }
-                        } //foreach
-                    }//using
+                    } //foreach
+                }//using
                 
-            }//while
+        }//while
 
             summary.EndDate = DateTime.Now;
             _logger.WriteEntry($"########## Update #{_updatesCount++} Complete ... ##########", LoggingLevel.Info);
@@ -104,7 +102,7 @@ namespace application.Synchronization
             {
                 _logger.WriteEntry($"@ExecuteAndWait : {ex.GetLastErrorMessage()}", LoggingLevel.Error);
             }
-            
+
             //_logger.WriteEntry($"Elapsed : {_watch.ElapsedMilliseconds} Ms", LoggingLevel.Debug);
 
             if (_watch.ElapsedMilliseconds >= delayInMs) //took more then one sec
@@ -120,7 +118,7 @@ namespace application.Synchronization
             try
             {
                 return dbContext.AmazonProducts
-                                .Include(pr=>pr.Product)
+                                //.Include(pr=>pr.Product)
                                 .FirstOrDefault(p => p.Asin.Equals(asin, StringComparison.OrdinalIgnoreCase));
             }
             catch (Exception ex)
@@ -143,34 +141,37 @@ namespace application.Synchronization
             */
             #endregion
 
-            var pr = GetAmazonProductByAsin(dbContext, prodSum.Asin);
-            var price = (prodSum.Price > 0) ? Convert.ToInt32(prodSum.Price) : Convert.ToInt32(dbProd.Price);
+            //using (var dbContext = new BagsContext(_config))
+            //{
+                var pr = GetAmazonProductByAsin(dbContext, prodSum.Asin);
+                var price = (prodSum.Price > 0) ? Convert.ToInt32(prodSum.Price) : Convert.ToInt32(dbProd.Price);
 
-            if (pr == null)//it means that this is a new product and must be inserted into the AmazonProduct table
-            {
-                pr = new AmazonProduct
+                if (pr == null)//it means that this is a new product and must be inserted into the AmazonProduct table
                 {
-                    Asin = prodSum.Asin,
-                    Price = price,
-                    LastChecked = DateTime.Now,
-                    Available = prodSum.IsAvailable,
-                    Product = dbProd
-                };
+                    pr = new AmazonProduct
+                    {
+                        Asin = prodSum.Asin,
+                        Price = price,
+                        LastChecked = DateTime.Now,
+                        Available = prodSum.IsAvailable,
+                        Product = dbProd
+                    };
 
-                dbContext.AmazonProducts.Add(pr);
-            }
-            else//update existing amazon product
-            {
-                pr.Price = price;
-                pr.Available = prodSum.IsAvailable;
-                pr.LastChecked = DateTime.Now;
-            }
+                    dbContext.AmazonProducts.Add(pr);
+                }
+                else//update existing amazon product
+                {
+                    pr.Price = price;
+                    pr.Available = prodSum.IsAvailable;
+                    pr.LastChecked = DateTime.Now;
+                }
 
             //Update the price in Product.Price
             dbProd.Price = price;
 
             //if async, the db context can request a new batch before the save is made ==> throws an exception, because it's not thread safe
-            dbContext.SaveChanges();
+            dbContext.SaveChanges(); 
+            //}
 
         }
 
