@@ -13,8 +13,11 @@ namespace application.Logger
 
         public SimpleFileLogger()
         {
+            if (!Directory.Exists(@"Log"))
+                Directory.CreateDirectory(@"Log");
+
             _logBuilder = new StringBuilder();
-            _fileName = $"Log_{DateTime.Now.ToString().Replace("/", "-").Replace(":", "-").Replace(" ", "_")}.log";
+            _fileName = $"Log/Log_{DateTime.Now.ToString().Replace("/", "-").Replace(":", "-").Replace(" ", "_")}.log";
 
             //_fileName = "App_Log.log";
         }

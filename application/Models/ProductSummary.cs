@@ -86,7 +86,8 @@ namespace application.Models
 
         public static bool IsUpdateRequired(this ProductSummary sumProduct, AmazonProduct dbProd)
         {
-            if (dbProd == null)//this happens if the product is new and hasn't been added to the amazon table
+            //this happens if the product is new and hasn't been added to the amazon table
+            if (dbProd == null)
                 return true;
 
             return !sumProduct.Price.Equals(dbProd.Price) || 
