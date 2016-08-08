@@ -54,7 +54,6 @@ namespace application.Synchronization
                             {
                                 var amzProd = _amazonClient.GetProductSummary(dbProd.Asin).Result;
                                 if (!amzProd.IsAvailable)
-                                    //product unavailable or an error occured while getting product from API
                                 {
                                     summary.UnavailableCount++;
                                 }
@@ -195,10 +194,12 @@ namespace application.Synchronization
                     return dbContext.Products
                                     .Skip(startIndex - 1)
                                     .Take(productCount)
+                                    //.AsNoTracking() ==> when Product price won't need update
                                     .ToList();
                 else
                     return dbContext.Products
                                     .Skip(startIndex - 1)
+                                    //.AsNoTracking()
                                     .ToList();
             }
             catch (Exception ex)
