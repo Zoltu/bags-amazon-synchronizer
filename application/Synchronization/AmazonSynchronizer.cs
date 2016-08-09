@@ -29,6 +29,7 @@ namespace application.Synchronization
             var startIndex = 0;
             var count = 0;
             var isSaveRequired = false;
+
             while (true)
             {
                 using (var dbContext = new BagsContext(_config))
@@ -70,7 +71,7 @@ namespace application.Synchronization
                                     isSaveRequired = true;//specifies that the batch has been modified and needs to be saved to DB
                                 }
                                 
-                                _logger.WriteEntry($"@Update#{_updatesCount} | @Product #{count}| @{dbProd.AmazonProduct.Asin} | Price : {dbProd.AmazonProduct.Price} / Available : {dbProd.AmazonProduct.Available}", LoggingLevel.Debug, _updatesCount);
+                                _logger.WriteEntry($"@Update #{_updatesCount} | @Product #{count}| ASIN : {dbProd.AmazonProduct.Asin} / Price : {dbProd.AmazonProduct.Price} / Available : {dbProd.AmazonProduct.Available}", LoggingLevel.Debug, _updatesCount);
 
                             });
 
@@ -131,55 +132,26 @@ namespace application.Synchronization
         
         private void UpdateAmazonProduct(BagsContext dbContext, ProductSummary prodSum, Product dbProd)
         {
-            #region # How it works # 
-            /*                
-                 +The update is made on the two tables : Product and AmazonProduct
-                 +The reason for that is because the Price exists in both tables and I don't know which one you are using in your backend API
-                 +When I update the price I do it for Product and AmazonProduct tables
-                 +When I insert an AmazonProduct for the first time : I add it in AmazonProduct table
-                 +If I update an existing AmazonProduct : I update its properties (price, availability, last checked, ...) and I update the price in the corresponding Product 
-            */
-            #endregion
-
-            var pr = GetAmazonProductByAsin(dbContext, prodSum.Asin);
-
-            if (pr == null)//it means that this is a new product and must be inserted into the AmazonProduct table
+            //it means that this is a new product and must be inserted into the AmazonProduct table
+            if (dbProd.AmazonProduct == null)
             {
-                pr = new AmazonProduct
+                dbContext.AmazonProducts.Add(new AmazonProduct
                 {
                     Asin = prodSum.Asin,
                     Price = Convert.ToInt32(prodSum.Price),
                     LastChecked = DateTime.Now,
                     Available = prodSum.Available,
                     Product = dbProd
-                };
-
-                dbContext.AmazonProducts.Add(pr);
+                });
             }
             else//update existing amazon product
             {
-                pr.Price = Convert.ToInt32(prodSum.Price);
-                pr.Available = prodSum.Available;
-                pr.LastChecked = DateTime.Now;
+                dbProd.AmazonProduct.Price = Convert.ToInt32(prodSum.Price);
+                dbProd.AmazonProduct.Available = prodSum.Available;
+                dbProd.AmazonProduct.LastChecked = DateTime.Now;
             }
         }
-
-        private AmazonProduct GetAmazonProductByAsin(BagsContext dbContext, string asin)
-        {
-            try
-            {
-                return dbContext.AmazonProducts
-                                //.Include(pr=>pr.Product)
-                                .FirstOrDefault(p => p.Asin.Equals(asin, StringComparison.OrdinalIgnoreCase));
-            }
-            catch (Exception ex)
-            {
-                _logger.WriteEntry($"@GetAmazonProductByAsin | @{asin} : {ex.GetLastErrorMessage()}", LoggingLevel.Error, _updatesCount);
-            }
-
-            return null;
-        }
-
+        
         private List<Product> GetProductsFromDb(BagsContext dbContext, int startIndex = -1, int productCount = -1)
         {
             try
@@ -192,13 +164,11 @@ namespace application.Synchronization
                                     .Include(p=>p.AmazonProduct)
                                     .Skip(startIndex - 1)
                                     .Take(productCount)
-                                    //.AsNoTracking() ==> when Product price won't need update
                                     .ToList();
                 else
                     return dbContext.Products
                                     .Include(p => p.AmazonProduct)
                                     .Skip(startIndex - 1)
-                                    //.AsNoTracking()
                                     .ToList();
             }
             catch (Exception ex)
