@@ -22,7 +22,7 @@ namespace application.Amazon
 			_requestSigner = new RequestSigner(awsAccessKeyId, awsSecretKey, "ecs.amazonaws.com");
 		}
         
-		private async Task<String> GetProductDetailsXml(String asin, OperationType type = OperationType.ItemLookup)
+		private async Task<String> GetProductDetailsXml(String asins, OperationType type = OperationType.ItemLookup)
 		{
 			var requestParameters = new Dictionary<String, String>
 			{
@@ -35,13 +35,13 @@ namespace application.Amazon
 		    if (type == OperationType.ItemLookup)
 		    {
                 requestParameters.Add("Operation", "ItemLookup");
-                requestParameters.Add("ItemId", asin);
+                requestParameters.Add("ItemId", asins);
             }
             else if (type == OperationType.ItemSearch)
             {
                 requestParameters.Add("Operation", "ItemSearch");
                 requestParameters.Add("SearchIndex", "All");
-                requestParameters.Add("Keywords", asin);
+                requestParameters.Add("Keywords", asins);
             }
 
 			var amazonRequestUri = _requestSigner.Sign(requestParameters);
@@ -50,13 +50,13 @@ namespace application.Amazon
             return await httpClient.GetStringAsync(amazonRequestUri);
 		}
         
-        public async Task<ProductSummary> GetProductSummary(String asin)
+        public async Task<List<ProductSummary>> GetProductSummary(String asins)
         {
-            var xmlString = await GetProductDetailsXml(asin);
+            var xmlString = await GetProductDetailsXml(asins);
 
-            return xmlString.ToProductSummary(asin);
+            return xmlString.ToProductSummaryList();
         }
-
+        
         public String ConvertImageLinkToHttps(String source)
 		{
 			var uriBuilder = new UriBuilder(source);
