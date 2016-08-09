@@ -61,7 +61,7 @@ namespace application.Models
                         return new ProductSummary()
                         {
                             Asin = asin,
-                            Price = bestOffer.Price,
+                            Price = RoundPrice(bestOffer.Price),
                             IsPrime = bestOffer.IsEligibleForPrime,//always true
                             Available = true
                         };
@@ -78,7 +78,7 @@ namespace application.Models
             return new ProductSummary()
             {
                 Asin = asin, //not needed
-                Price = Convert.ToInt64(Math.Ceiling(lowestNewPrice)),
+                Price = RoundPrice(lowestNewPrice),
                 Available = false,
                 IsPrime = false
             };
@@ -121,6 +121,23 @@ namespace application.Models
         private static XElement Single(this XElement input, string name)
         {
             return input.Elements(ns + name).Single();
+        }
+
+        private static Int64 RoundPrice(double price)
+        {
+            //round up to the nearest $5
+            //$99 would round up to $100.
+            //$93 would round up to $95
+            var roundedPrice = Math.Ceiling(price);
+
+            if(roundedPrice % 5 == 0)
+              return  Convert.ToInt64(roundedPrice);
+
+            while (roundedPrice % 5 != 0)
+            {
+                roundedPrice++;
+            }
+            return Convert.ToInt64(roundedPrice);
         }
     }
 }

@@ -98,8 +98,9 @@ namespace application.Synchronization
             }//while
 
             summary.EndDate = DateTime.Now;
-            _logger.WriteEntry($"########## Update #{_updatesCount++} Complete ... ##########", LoggingLevel.Info, _updatesCount);
+            _logger.WriteEntry($"########## Update #{_updatesCount} Complete ... ##########", LoggingLevel.Info, _updatesCount);
             _logger.WriteEntry($"       {summary.ToString()}", LoggingLevel.Info, _updatesCount);
+            _updatesCount++;
         }
         
         /// <summary>
