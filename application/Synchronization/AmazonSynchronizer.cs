@@ -53,7 +53,9 @@ namespace application.Synchronization
                             ExecuteAndWait(() =>
                             {
                                 var productSummary = _amazonClient.GetProductSummary(dbProd.Asin).Result;
-                                productSummary.Price = (productSummary.Price > 0) ? Convert.ToInt32(productSummary.Price) : Convert.ToInt32(dbProd.Price);
+
+                                if(productSummary.Price <= 0)
+                                    productSummary.Price = Convert.ToInt32(dbProd.Price);//keep the old price
 
                                 if (!productSummary.IsAvailable)
                                 {
