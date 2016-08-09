@@ -31,7 +31,7 @@ namespace application.Synchronization
         protected Predicate<object> _stopWhen;
         protected Configuration _config;
         protected int _updatesCount = 1;
-        protected int _productsPerBatch = 50;
+        protected const int _productsPerBatch = 10;//keep it at 10 for amazon api batch
         public bool IsRunning { get { return !_isIdle; } }
         #endregion
         
@@ -108,13 +108,13 @@ namespace application.Synchronization
             return this;
         }
 
-        public SynchronizerBase SetBatchSize(int size)
-        {
-            if (size > 0)
-                _productsPerBatch = size;
+        //public SynchronizerBase SetBatchSize(int size)
+        //{
+        //    if (size > 0)
+        //        _productsPerBatch = size;
 
-            return this;
-        }
+        //    return this;
+        //}
 
         protected virtual void CheckConfigAndSetDefaults()
         {

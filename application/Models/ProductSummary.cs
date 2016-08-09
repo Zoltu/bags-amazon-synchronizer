@@ -19,12 +19,11 @@ namespace application.Models
     public static class ProductSummaryExtensions
     {
         private static XNamespace ns = "http://webservices.amazon.com/AWSECommerceService/2011-08-01";
-        public static ProductSummary ToProductSummary(this string xmlString, string asin)
+        private static ProductSummary ToProductSummary(this XElement item)
         {
-            XElement item;
             XElement offers;
+            string asin = string.Empty;
             double lowestNewPrice = -1;
-            //int qty;
 
             try
             {
@@ -33,14 +32,7 @@ namespace application.Models
                 //if a product has no offer it means not available because it has no seller
                 //Mark those as Unavailable and leave the price at whatever it was before.
 
-                item = XElement.Parse(xmlString)
-                                .Single("Items")
-                                .Single("Item");
-
-                //qty = Int32.Parse(item
-                //           .Single("OfferSummary")
-                //           .Single("TotalNew")
-                //           .Value);
+                asin = item.Single("ASIN").Value;
 
                 lowestNewPrice = Double.Parse(item
                                         .Single("OfferSummary")
@@ -68,13 +60,13 @@ namespace application.Models
                 }
 
                 //if TotalOffers = 0 ==> Unavailable
-                
+
             }
             catch (Exception ex)
             {
                 //some products become out of stock or removed for good
             }
-            
+
             return new ProductSummary()
             {
                 Asin = asin, //not needed
@@ -82,8 +74,23 @@ namespace application.Models
                 Available = false,
                 IsPrime = false
             };
+            
+        }
+        public static List<ProductSummary> ToProductSummaryList(this string xmlString)
+        {
+            return XElement.Parse(xmlString)
+                            .Single("Items")
+                            .Elements(ns + "Item")
+                            .Select(item=>item.ToProductSummary())
+                            .ToList();
         }
 
+        /// <summary>
+        /// Checks if a product needs to be updated
+        /// </summary>
+        /// <param name="sumProduct">product from Amazon API</param>
+        /// <param name="dbProd">product from the database</param>
+        /// <returns></returns>
         public static bool IsUpdateRequired(this ProductSummary sumProduct, AmazonProduct dbProd)
         {
             //this happens if the product is new and hasn't been added to the amazon table
@@ -123,6 +130,11 @@ namespace application.Models
             return input.Elements(ns + name).Single();
         }
 
+        /// <summary>
+        /// Rounds the price of a product to the nearest $5
+        /// </summary>
+        /// <param name="price"></param>
+        /// <returns></returns>
         private static Int64 RoundPrice(double price)
         {
             //round up to the nearest $5

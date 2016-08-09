@@ -43,22 +43,23 @@ namespace application.Synchronization
                     startIndex += products.Count;
 
                     //_logger.WriteEntry($"{products.Count} products found...", LoggingLevel.Debug);
-
-                    foreach (var dbProd in products)
+                    
+                    try
                     {
-                        try
+                        //if cancelled ==> exit
+                        if (_cancelToken.IsCancellationRequested)
+                            return;
+
+                        ExecuteAndWait(() =>
                         {
-                            //if cancelled ==> exit
-                            if (_cancelToken.IsCancellationRequested)
-                                return;
-
-                            ExecuteAndWait(() =>
+                            //var results = _amazonClient.GetProductSummary(string.Join(",", products.Select(p => p.Asin))).Result;
+                            foreach (var productSummary in _amazonClient.GetProductSummary(string.Join(",", products.Select(p => p.Asin))).Result)
                             {
-                                var productSummary = _amazonClient.GetProductSummary(dbProd.Asin).Result;
+                                var dbProd = products.FirstOrDefault(pr => pr.Asin.Equals(productSummary.Asin));
 
-                                if(productSummary.Price <= 0)
-                                    productSummary.Price = Convert.ToInt32(dbProd.Price);//keep the old price
-
+                                //if (productSummary.Price <= 0)
+                                //    productSummary.Price = Convert.ToInt32(dbProd.Price);//keep the old price
+                                    
                                 if (!productSummary.Available)
                                 {
                                     summary.UnavailableCount++;
@@ -71,21 +72,18 @@ namespace application.Synchronization
                                     isSaveRequired = true;//specifies that the batch has been modified and needs to be saved to DB
                                 }
                                 
-                                _logger.WriteEntry($"@Update #{_updatesCount} | @Product #{count}| ASIN : {dbProd.AmazonProduct.Asin} / Price : {dbProd.AmazonProduct.Price} / Available : {dbProd.AmazonProduct.Available}", LoggingLevel.Debug, _updatesCount);
+                                _logger.WriteEntry($"@Update #{_updatesCount} | @Product #{++count}| ASIN : {dbProd.AmazonProduct.Asin} / Price : {dbProd.AmazonProduct.Price} / Available : {dbProd.AmazonProduct.Available}", LoggingLevel.Debug, _updatesCount);
 
-                            });
+                            }
 
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.WriteEntry($"@ExecuteUpdateInternal | @{dbProd.Asin} : {ex.GetLastErrorMessage()}", LoggingLevel.Error, _updatesCount);
-                            summary.ErrorAsins.Add(dbProd.Asin);
-                        }
-                        finally
-                        {
-                            count++;
-                        }
-                    } //foreach
+                        });
+
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.WriteEntry($"@ExecuteUpdateInternal : {ex.GetLastErrorMessage()}", LoggingLevel.Error, _updatesCount);
+                        //summary.ErrorAsins.Add(dbProd.Asin);
+                    }
 
                     //a save per batch not per product
                     if(isSaveRequired)
@@ -121,7 +119,7 @@ namespace application.Synchronization
                 _logger.WriteEntry($"@ExecuteAndWait : {ex.GetLastErrorMessage()}", LoggingLevel.Error, _updatesCount);
             }
 
-            _logger.WriteEntry($"Elapsed : {_watch.ElapsedMilliseconds} Ms", LoggingLevel.Debug, _updatesCount);
+            _logger.WriteEntry($"Took : {_watch.ElapsedMilliseconds} Ms", LoggingLevel.Debug, _updatesCount);
 
             if (_watch.ElapsedMilliseconds >= delayInMs) //took more then one sec
                 return;//don't wait

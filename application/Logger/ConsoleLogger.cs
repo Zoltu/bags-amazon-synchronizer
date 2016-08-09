@@ -8,7 +8,6 @@ namespace application.Logger
 
         public void WriteEntry(string entry, LoggingLevel level = LoggingLevel.Error, int updateId = -1)
         {
-           
             if(Level <= level)
                 Console.WriteLine($"{DateTime.Now.ToString("s")}|{level.ToString().ToUpper()}|{entry}");
         }

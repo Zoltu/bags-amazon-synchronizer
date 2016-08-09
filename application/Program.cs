@@ -12,9 +12,9 @@ namespace application
 
 		    using (var amz = new AmazonSynchronizer(new Configuration()))
 		    {
-                amz.WithInterval(TimeSpan.FromMinutes(5))
+                amz.WithInterval(TimeSpan.FromSeconds(5))
                     .StopWhen((obj) => false)
-                    .SetLogger(new SimpleFileLogger())
+                    .SetLogger(new SimpleFileLogger() {Level = LoggingLevel.Debug})
                     .Start(CancellationToken.None)
                     .Wait();
             }
