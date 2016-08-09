@@ -17,7 +17,7 @@ namespace application.Synchronization
         #region Properties
         public string Id { get; set; }
         public string Name { get;  set; }
-        protected AmazonWebClient _amazonClient;
+        protected AmazonUtilities _amazonClient;
         protected bool _reportProgress;
         protected TimeSpan _interval;
         protected TimeSpan _intervalDefault = TimeSpan.FromHours(5);
@@ -31,7 +31,7 @@ namespace application.Synchronization
         protected Predicate<object> _stopWhen;
         protected Configuration _config;
         protected int _updatesCount = 1;
-        protected int _productsPerBatch = 10;//be carefull if new products come in between batches !!! ==> if they do then they are up to date because just added | Or get products by last updated
+        protected int _productsPerBatch = 50;
         public bool IsRunning { get { return !_isIdle; } }
         #endregion
         
@@ -39,7 +39,7 @@ namespace application.Synchronization
         {
             _config = config;
             _logger = new ConsoleLogger();
-            _amazonClient = new AmazonWebClient(_config.AmazonAccessKey, _config.AmazonSecretKey, _config.AmazonAssociateTag);
+            _amazonClient = new AmazonUtilities(_config.AmazonAccessKey, _config.AmazonSecretKey, _config.AmazonAssociateTag);
             _watch = new Stopwatch();
             _logger.WriteEntry("Synchronization System Initialized ...", LoggingLevel.Info);
         }
