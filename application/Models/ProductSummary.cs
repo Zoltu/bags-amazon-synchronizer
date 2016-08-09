@@ -130,9 +130,6 @@ namespace application.Models
             //$93 would round up to $95
             var roundedPrice = Math.Ceiling(price);
 
-            if(roundedPrice % 5 == 0)
-              return  Convert.ToInt64(roundedPrice);
-
             while (roundedPrice % 5 != 0)
             {
                 roundedPrice++;
