@@ -14,7 +14,7 @@ namespace application
 		    {
                 amz.WithInterval(TimeSpan.FromSeconds(1))
                     .StopWhen((obj) => false)
-                    .SetLogger(new SimpleFileLogger())
+                    .SetLogger(new ConsoleLogger())
                     .Start(CancellationToken.None)
                     .Wait();
             }
