@@ -31,7 +31,7 @@ namespace application.Synchronization
         protected Predicate<object> _stopWhen;
         protected Configuration _config;
         protected int _updatesCount = 1;
-        protected int _productsPerBatch = 10;
+        protected int _productsPerBatch = 50;
         public bool IsRunning { get { return !_isIdle; } }
         #endregion
         

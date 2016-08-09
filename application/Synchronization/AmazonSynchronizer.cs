@@ -28,6 +28,7 @@ namespace application.Synchronization
 
             var startIndex = 0;
             var count = 0;
+            var isSaveRequired = false;
             while (true)
             {
                 using (var dbContext = new BagsContext(_config))
@@ -57,7 +58,7 @@ namespace application.Synchronization
                                 if(productSummary.Price <= 0)
                                     productSummary.Price = Convert.ToInt32(dbProd.Price);//keep the old price
 
-                                if (!productSummary.IsAvailable)
+                                if (!productSummary.Available)
                                 {
                                     summary.UnavailableCount++;
                                 }
@@ -66,9 +67,10 @@ namespace application.Synchronization
                                 {
                                     UpdateAmazonProduct(dbContext, productSummary, dbProd);
                                     summary.UpdatedCount++;
+                                    isSaveRequired = true;//specifies that the batch has been modified and needs to be saved to DB
                                 }
                                 
-                                _logger.WriteEntry($"@Update#{_updatesCount} | @Product#{count}| @{dbProd.Asin} | Current Price : {dbProd.Price} |=> Amazon State : Price : {productSummary.Price} / Available : {productSummary.IsAvailable}", LoggingLevel.Debug, _updatesCount);
+                                _logger.WriteEntry($"@Update#{_updatesCount} | @Product #{count}| @{dbProd.AmazonProduct.Asin} | Price : {dbProd.AmazonProduct.Price} / Available : {dbProd.AmazonProduct.Available}", LoggingLevel.Debug, _updatesCount);
 
                             });
 
@@ -84,8 +86,11 @@ namespace application.Synchronization
                         }
                     } //foreach
 
+                    //a save per batch not per product
+                    if(isSaveRequired)
+                        dbContext.SaveChanges();
 
-                    dbContext.SaveChanges();
+                    isSaveRequired = false;//reset to false
 
                 }//using
                 
@@ -145,7 +150,7 @@ namespace application.Synchronization
                     Asin = prodSum.Asin,
                     Price = Convert.ToInt32(prodSum.Price),
                     LastChecked = DateTime.Now,
-                    Available = prodSum.IsAvailable,
+                    Available = prodSum.Available,
                     Product = dbProd
                 };
 
@@ -154,7 +159,7 @@ namespace application.Synchronization
             else//update existing amazon product
             {
                 pr.Price = Convert.ToInt32(prodSum.Price);
-                pr.Available = prodSum.IsAvailable;
+                pr.Available = prodSum.Available;
                 pr.LastChecked = DateTime.Now;
             }
         }

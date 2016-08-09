@@ -12,7 +12,7 @@ namespace application.Models
         public Int64 Price { get; set; }
         public int Qty { get; set; }
         public bool IsPrime { get; set; }
-        public bool IsAvailable { get; set; }
+        public bool Available { get; set; }
 
     }
 
@@ -63,7 +63,7 @@ namespace application.Models
                             Asin = asin,
                             Price = bestOffer.Price,
                             IsPrime = bestOffer.IsEligibleForPrime,//always true
-                            IsAvailable = true
+                            Available = true
                         };
                 }
 
@@ -79,7 +79,7 @@ namespace application.Models
             {
                 Asin = asin, //not needed
                 Price = Convert.ToInt64(Math.Ceiling(lowestNewPrice)),
-                IsAvailable = false,
+                Available = false,
                 IsPrime = false
             };
         }
@@ -91,7 +91,7 @@ namespace application.Models
                 return true;
 
             return !sumProduct.Price.Equals(dbProd.Price) || 
-                   !sumProduct.IsAvailable.Equals(dbProd.Available);
+                   !sumProduct.Available.Equals(dbProd.Available);
         }
 
         /// <summary>
