@@ -6,12 +6,16 @@ using application.Data;
 using application.Logger;
 using application.Models;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.Extensions.Logging;
 
 namespace application.Synchronization
 {
     public class AmazonSynchronizer : SynchronizerBase
     {
-        public AmazonSynchronizer(Configuration config):base(config) {}
+        public AmazonSynchronizer(Configuration config) : base(config)
+        {
+        }
         
         protected override void ExecuteUpdateInternal()
         {
@@ -29,16 +33,21 @@ namespace application.Synchronization
             var startIndex = 0;
             var count = 0;
             var isSaveRequired = false;
+            var ids = GetAllIds();//get all products ids
 
             while (true)
             {
                 using (var dbContext = new BagsContext(_config))
                 {
+                    //var factory = dbContext.GetService<ILoggerFactory>();
+                    //factory.AddConsole();
+
                     //Getting products from DB
-                    var products = GetProductsFromDb(dbContext, startIndex, _productsPerBatch);
+                    var products = GetProductsByIds(dbContext, ids.Skip(startIndex - 1).Take(_productsPerBatch).ToList());
+                    //var products = GetProductsFromDb(dbContext, startIndex, _productsPerBatch);
                     if (products == null || products.Count == 0)
                         break;
-
+                    
                     summary.ProductCount += products.Count;
                     startIndex += products.Count;
 
@@ -52,7 +61,6 @@ namespace application.Synchronization
 
                         ExecuteAndWait(() =>
                         {
-                            //var results = _amazonClient.GetProductSummary(string.Join(",", products.Select(p => p.Asin))).Result;
                             foreach (var productSummary in _amazonClient.GetProductSummary(string.Join(",", products.Select(p => p.Asin))).Result)
                             {
                                 var dbProd = products.FirstOrDefault(pr => pr.Asin.Equals(productSummary.Asin));
@@ -73,7 +81,6 @@ namespace application.Synchronization
                                 }
                                 
                                 _logger.WriteEntry($"@Update #{_updatesCount} | @Product #{++count}| ASIN : {dbProd.AmazonProduct.Asin} / Price : {dbProd.AmazonProduct.Price} / Available : {dbProd.AmazonProduct.Available}", LoggingLevel.Debug, _updatesCount);
-
                             }
 
                         });
@@ -86,10 +93,12 @@ namespace application.Synchronization
                     }
 
                     //a save per batch not per product
-                    if(isSaveRequired)
+                    if (isSaveRequired)
+                    {
                         dbContext.SaveChanges();
-
-                    isSaveRequired = false;//reset to false
+                        isSaveRequired = false;//reset to false
+                    }
+                        
 
                 }//using
                 
@@ -131,6 +140,9 @@ namespace application.Synchronization
         
         private void UpdateAmazonProduct(BagsContext dbContext, ProductSummary prodSum, Product dbProd)
         {
+            //if (prodSum.Asin.Equals("B018TPZPLG"))
+            //    throw new Exception();
+
             //it means that this is a new product and must be inserted into the AmazonProduct table
             if (dbProd.AmazonProduct == null)
             {
@@ -174,6 +186,45 @@ namespace application.Synchronization
             {
                 _logger.WriteEntry($"Error getting products from DB : {ex.Message}", LoggingLevel.Error, _updatesCount);
                 return null;
+            }
+        }
+
+        private List<Product> GetProductsByIds(BagsContext dbContext, List<int> ids)
+        {
+            try
+            {
+                return dbContext.Products
+                                .Include(p => p.AmazonProduct)
+                                .Where(pr => ids.Contains(pr.Id))//gets converted to IN clause
+                                .ToList();
+
+                //return (
+                //          from product in dbContext.Products.Include(p => p.AmazonProduct)
+                //          where ids.Contains(product.Id)
+                //          select product
+                //          )
+                //          .ToList();
+
+                //return (
+                //          from product in dbContext.Products.Include(p => p.AmazonProduct)
+                //          where ids.Any(id=>product.Id.Equals(id))
+                //          select product
+                //        ).ToList();
+
+            }
+            catch (Exception ex)
+            {
+                _logger.WriteEntry($"Error getting products from DB : {ex.Message}", LoggingLevel.Error, _updatesCount);
+                return null;
+            }
+        }
+        private List<int> GetAllIds()
+        {
+            using (var db = new BagsContext(_config))
+            {
+                return db.Products
+                         .Select(prod => prod.Id)
+                         .ToList();
             }
         }
     }
