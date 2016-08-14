@@ -30,7 +30,7 @@ namespace application.Synchronization
                 StartDate = DateTime.Now
             };
 
-            var startIndex = 0;
+            var startIndex = 1;
             var count = 0;
             var isSaveRequired = false;
             var ids = GetAllIds();//get all products ids
@@ -197,20 +197,7 @@ namespace application.Synchronization
                                 .Include(p => p.AmazonProduct)
                                 .Where(pr => ids.Contains(pr.Id))//gets converted to IN clause
                                 .ToList();
-
-                //return (
-                //          from product in dbContext.Products.Include(p => p.AmazonProduct)
-                //          where ids.Contains(product.Id)
-                //          select product
-                //          )
-                //          .ToList();
-
-                //return (
-                //          from product in dbContext.Products.Include(p => p.AmazonProduct)
-                //          where ids.Any(id=>product.Id.Equals(id))
-                //          select product
-                //        ).ToList();
-
+                
             }
             catch (Exception ex)
             {
