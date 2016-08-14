@@ -2,6 +2,7 @@
 using System.Threading;
 using application.Logger;
 using application.Synchronization;
+using Microsoft.Extensions.Logging;
 
 namespace application
 {
@@ -9,8 +10,7 @@ namespace application
 	{
 		public static void Main(string[] args)
 		{
-
-		    using (var amz = new AmazonSynchronizer(new Configuration()))
+            using (var amz = new AmazonSynchronizer(new Configuration()))
 		    {
                 amz.WithInterval(TimeSpan.FromSeconds(1))
                     .StopWhen((obj) => false)
