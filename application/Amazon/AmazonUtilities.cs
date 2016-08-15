@@ -27,7 +27,7 @@ namespace application.Amazon
 			var requestParameters = new Dictionary<String, String>
 			{
 				{ "IdType", "ASIN" },
-				{ "ResponseGroup", "Large" },//"Images,Offers,ItemAttributes"
+				{ "ResponseGroup", "Large" },
 				{ "Service", "AWSECommerceService" },
 				{ "AssociateTag", _associateTag }
 			};
@@ -45,9 +45,12 @@ namespace application.Amazon
             }
 
 			var amazonRequestUri = _requestSigner.Sign(requestParameters);
-			var httpClient = new HttpClient();
-		    httpClient.Timeout = TimeSpan.FromSeconds(5);
-            return await httpClient.GetStringAsync(amazonRequestUri);
+		    var httpClient = new HttpClient
+		                        {
+		                            Timeout = TimeSpan.FromSeconds(5)
+		                        };
+
+		    return await httpClient.GetStringAsync(amazonRequestUri);
 		}
         
         public async Task<List<ProductSummary>> GetProductSummary(String asins)

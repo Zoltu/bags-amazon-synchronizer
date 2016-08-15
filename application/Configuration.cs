@@ -9,8 +9,9 @@ namespace application
 		public readonly String AmazonAccessKey;
 		public readonly String AmazonSecretKey;
 		public readonly String SqlServerConnectionString;
+	    public readonly String InstrumentationKey;
 
-		public Configuration()
+        public Configuration()
 		{
 			var configuration = new ConfigurationBuilder()
 			.AddEnvironmentVariables()
@@ -32,6 +33,10 @@ namespace application
 			SqlServerConnectionString = configuration["SqlServerConnectionString"];
 			if (SqlServerConnectionString == null)
 				throw new Exception("Required configuration option SqlServerConnectionString not found.");
-		}
+
+            InstrumentationKey = configuration["InstrumentationKey"];
+            if (InstrumentationKey == null)
+                throw new Exception("Required configuration option InstrumentationKey not found.");
+        }
 	}
 }
