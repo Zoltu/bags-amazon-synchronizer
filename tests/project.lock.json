@@ -57,6 +57,36 @@
           }
         }
       },
+      "Microsoft.ApplicationInsights/2.2.0-beta1": {
+        "type": "package",
+        "dependencies": {
+          "System.Collections": "4.0.10",
+          "System.Diagnostics.Debug": "4.0.10",
+          "System.Diagnostics.Tools": "4.0.0",
+          "System.Diagnostics.Tracing": "4.0.20",
+          "System.Globalization": "4.0.10",
+          "System.IO": "4.0.10",
+          "System.IO.Compression": "4.0.0",
+          "System.Linq": "4.0.0",
+          "System.Net.Http": "4.0.0",
+          "System.Reflection": "4.0.10",
+          "System.Reflection.Extensions": "4.0.0",
+          "System.Runtime": "4.0.20",
+          "System.Runtime.Extensions": "4.0.10",
+          "System.Text.Encoding": "4.0.10",
+          "System.Text.Encoding.Extensions": "4.0.10",
+          "System.Text.RegularExpressions": "4.0.10",
+          "System.Threading": "4.0.10",
+          "System.Threading.Tasks": "4.0.10",
+          "System.Xml.XDocument": "4.0.10"
+        },
+        "compile": {
+          "lib/dotnet5.4/Microsoft.ApplicationInsights.dll": {}
+        },
+        "runtime": {
+          "lib/dotnet5.4/Microsoft.ApplicationInsights.dll": {}
+        }
+      },
       "Microsoft.AspNetCore.Hosting.Abstractions/1.0.0": {
         "type": "package",
         "dependencies": {
@@ -3317,6 +3347,7 @@
         "type": "project",
         "framework": ".NETCoreApp,Version=v1.0",
         "dependencies": {
+          "Microsoft.ApplicationInsights": "2.2.0-beta1",
           "Microsoft.EntityFrameworkCore": "1.0.0",
           "Microsoft.EntityFrameworkCore.Design": "1.0.0-preview2-final",
           "Microsoft.EntityFrameworkCore.SqlServer": "1.0.0",
@@ -3369,6 +3400,26 @@
         "runtimes/win7-arm/native/libuv.dll",
         "runtimes/win7-x64/native/libuv.dll",
         "runtimes/win7-x86/native/libuv.dll"
+      ]
+    },
+    "Microsoft.ApplicationInsights/2.2.0-beta1": {
+      "sha512": "QIXlmg1iRkaTbryXya9ffBIlbMMLmyVUi1Hn6kNWN4iTqYIS7rMYBNjnSvZpVxZL9L3OMDBfQBTWVr++KNxflw==",
+      "type": "package",
+      "path": "Microsoft.ApplicationInsights/2.2.0-beta1",
+      "files": [
+        "Microsoft.ApplicationInsights.2.2.0-beta1.nupkg.sha512",
+        "Microsoft.ApplicationInsights.nuspec",
+        "lib/dotnet5.4/Microsoft.ApplicationInsights.XML",
+        "lib/dotnet5.4/Microsoft.ApplicationInsights.dll",
+        "lib/net40/Microsoft.ApplicationInsights.XML",
+        "lib/net40/Microsoft.ApplicationInsights.dll",
+        "lib/net45/Microsoft.ApplicationInsights.XML",
+        "lib/net45/Microsoft.ApplicationInsights.dll",
+        "lib/net46/Microsoft.ApplicationInsights.XML",
+        "lib/net46/Microsoft.ApplicationInsights.dll",
+        "lib/portable-win81+wpa81/Microsoft.ApplicationInsights.dll",
+        "lib/uap10.0/Microsoft.ApplicationInsights.dll",
+        "lib/wp8/Microsoft.ApplicationInsights.dll"
       ]
     },
     "Microsoft.AspNetCore.Hosting.Abstractions/1.0.0": {
