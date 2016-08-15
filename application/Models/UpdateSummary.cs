@@ -15,7 +15,7 @@ namespace application.Models
         public List<string> ErrorAsins { get; set; }
         public DateTime StartDate { get; set; }
         public DateTime EndDate { get; set; }
-
+        public string Duration => (EndDate - StartDate).ToString("g");
 
         public UpdateSummary()
         {

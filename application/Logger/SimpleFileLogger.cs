@@ -7,7 +7,6 @@ namespace application.Logger
 {
     public class SimpleFileLogger : ISyncLogger
     {
-        private StringBuilder _logBuilder;
         private string _fileName;
         public LoggingLevel Level { get; set; }
 
@@ -15,11 +14,9 @@ namespace application.Logger
         {
             if (!Directory.Exists(@"Log"))
                 Directory.CreateDirectory(@"Log");
-
-            _logBuilder = new StringBuilder();
+            
             _fileName = $"Log/Log_{DateTime.Now.ToString().Replace("/", "-").Replace(":", "-").Replace(" ", "_")}.log";
-
-            //_fileName = "App_Log.log";
+            
         }
 
         public void WriteEntry(string entry, LoggingLevel level = LoggingLevel.Error, int updateId = -1)

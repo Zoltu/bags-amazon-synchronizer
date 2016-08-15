@@ -15,7 +15,5 @@ namespace application.Synchronization
         void Pause();
         SynchronizerBase WithInterval(TimeSpan interval);
         SynchronizerBase StopWhen(Predicate<object> condition);
-        SynchronizerBase SetProgressReportingTo(bool reportProgress);
-        SynchronizerBase SetLogger(ISyncLogger logger);
     }
 }

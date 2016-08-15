@@ -8,47 +8,49 @@ using application.Amazon;
 using application.Data;
 using application.Logger;
 using application.Models;
+using Microsoft.ApplicationInsights;
 
 namespace application.Synchronization
 {
-    //System.Timers ??
     public abstract class SynchronizerBase : ISynchronizer
     {
         #region Properties
         public string Id { get; set; }
         public string Name { get;  set; }
         protected AmazonUtilities _amazonClient;
-        protected bool _reportProgress;
         protected TimeSpan _interval;
         protected TimeSpan _intervalDefault = TimeSpan.FromHours(5);
         protected bool _isIdle = true;
         protected CancellationToken _cancelToken;
-        protected static readonly object _lock = new object();
         protected Timer _timer;
         protected bool _disposed;
         protected Stopwatch _watch;
-        protected ISyncLogger _logger;
         protected Predicate<object> _stopWhen;
         protected Configuration _config;
+        protected TelemetryClient _telemetryClient;
         protected int _updatesCount = 1;
         protected const int _productsPerBatch = 10;//keep it at 10 for amazon api batch
         public bool IsRunning { get { return !_isIdle; } }
+        
         #endregion
         
-        public SynchronizerBase(Configuration config)
+        public SynchronizerBase(Configuration config, TelemetryClient telemetryClient)
         {
+            if(telemetryClient == null)
+                throw new ArgumentNullException("Telemetry client cannot be null.");
+
+            _telemetryClient = telemetryClient;
             _config = config;
-            _logger = new ConsoleLogger();
             _amazonClient = new AmazonUtilities(_config.AmazonAccessKey, _config.AmazonSecretKey, _config.AmazonAssociateTag);
             _watch = new Stopwatch();
-            _logger.WriteEntry("Synchronization System Initialized ...", LoggingLevel.Info);
+            _telemetryClient.TrackEvent("Synchronization System Initialized ...");
         }
         
         public virtual Task Start(CancellationToken cancelToken)
         {
           return  Task.Factory.StartNew((obj) =>
             {
-                _logger.WriteEntry("Synchronization System Started ...", LoggingLevel.Info);
+                _telemetryClient.TrackEvent("Synchronization System Started ...");
 
                 _cancelToken = cancelToken;
 
@@ -74,12 +76,12 @@ namespace application.Synchronization
         {
             _timer.Dispose();
             _isIdle = true;
-            _logger.WriteEntry("Synchronization System Stopped ...", LoggingLevel.Info);
+            _telemetryClient.TrackEvent("Synchronization System Stopped ...");
         }
 
         public virtual void Pause()
         {
-            _logger.WriteEntry("Synchronization System Paused ...", LoggingLevel.Info);
+            _telemetryClient.TrackEvent("Synchronization System Paused ...");
         }
 
 
@@ -94,42 +96,20 @@ namespace application.Synchronization
             _stopWhen = condition;
             return this;
         }
-        public virtual SynchronizerBase SetProgressReportingTo(bool reportProgress)
-        {
-            _reportProgress = reportProgress;
-            return this;
-        }
-
-        public SynchronizerBase SetLogger(ISyncLogger logger)
-        {
-            if(logger != null)//CheckConfigAndSetDefaults will set to defaults anyway
-                _logger = logger;
-
-            return this;
-        }
-
-        //public SynchronizerBase SetBatchSize(int size)
-        //{
-        //    if (size > 0)
-        //        _productsPerBatch = size;
-
-        //    return this;
-        //}
-
+        
         protected virtual void CheckConfigAndSetDefaults()
         {
-            if (_logger == null)
-                _logger = new ConsoleLogger();
-
             if (_interval.TotalMilliseconds.Equals(0)) //interval was set to 0 or not at all
             {
                 _interval = _intervalDefault;//set default delay between updates
 
-                _logger.WriteEntry($"Update Interval was set to its default value ({_intervalDefault} hours)", LoggingLevel.Info);
+                _telemetryClient.TrackEvent("CheckConfigAndSetDefaults", new Dictionary<string, string>()
+                {
+                    {"UpdateIntervalDefault", $"Update Interval was set to its default value ({_intervalDefault} hours)"} 
+                });
+                
             }
-
-            //check amazon keys
-            //check dbcontext
+            
         }
 
         protected virtual void ExecuteUpdate(Object state)
@@ -154,6 +134,9 @@ namespace application.Synchronization
             {
                 //cleanup
                 Stop();
+                _amazonClient = null;
+                _watch = null;
+                //_telemetryClient.Flush();
                 _disposed = true;
             }
         }
