@@ -59,7 +59,18 @@ namespace application.Synchronization
                             foreach (var productSummary in _amazonClient.GetProductSummary(string.Join(",", products.Select(p => p.Asin))).Result)
                             {
                                 var dbProd = products.FirstOrDefault(pr => pr.Asin.Equals(productSummary.Asin));
-  
+
+                                _telemetryClient.TrackEvent("Product Update Status", new Dictionary<string, string>()
+                                {
+                                    {"Update#" ,_updatesCount.ToString()},
+                                    {"Product#" ,(++count).ToString()},
+                                    {"ASIN", dbProd.AmazonProduct?.Asin },
+                                    {"Old Price", dbProd.AmazonProduct?.Price.ToString() },
+                                    {"New Price", productSummary.Price.ToString() },
+                                    {"Old Availability", dbProd.AmazonProduct?.Available.ToString() },
+                                    {"New Availability", productSummary.Available.ToString() }
+                                });
+
                                 if (!productSummary.Available)
                                 {
                                     summary.UnavailableCount++;
@@ -71,18 +82,7 @@ namespace application.Synchronization
                                     summary.UpdatedCount++;
                                     isSaveRequired = true;//specifies that the batch has been modified and needs to be saved to DB
                                 }
-
-                                _telemetryClient.TrackEvent("Product Update Status", new Dictionary<string, string>()
-                                {
-                                    {"Update#" ,_updatesCount.ToString()},
-                                    {"Product#" ,(++count).ToString()},
-                                    {"ASIN", dbProd.AmazonProduct.Asin },
-                                    {"Old Price", dbProd.AmazonProduct.Price.ToString() },
-                                    {"New Price", productSummary.Price.ToString() },
-                                    {"Old Availability", dbProd.AmazonProduct.Available.ToString() },
-                                    {"New Availability", productSummary.Available.ToString() }
-                                });
-
+                                
                             }
 
                         });
