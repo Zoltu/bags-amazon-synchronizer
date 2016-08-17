@@ -66,6 +66,15 @@ namespace application
                             IsPrime = bestOffer.IsEligibleForPrime,//always true
                             Available = true
                         };
+
+                    else//if there were no prime offers, just get the lowest non prime price and set availability to true 
+                        return new ProductSummary()
+                        {
+                            Asin = asin,
+                            Price = RoundPrice(lowestNewPrice),
+                            Available = true,
+                            IsPrime = false
+                        };
                 }
                 
             }
@@ -74,6 +83,8 @@ namespace application
                 //some products become out of stock or removed for good
             }
 
+            //if the code reaches here that means that there was an exception during execution ==> There was no offer for the product, prime or not prime
+            //so just set it to not available
             return new ProductSummary()
             {
                 Asin = asin,
